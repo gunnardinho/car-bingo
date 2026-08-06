@@ -37,6 +37,9 @@ class _HomeBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    // A restored (or in-flight) game makes "Resume" available; otherwise the
+    // screen is purely a new-game launcher.
+    final active = ref.watch(gameControllerProvider);
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
@@ -51,6 +54,21 @@ class _HomeBody extends ConsumerWidget {
               Text(l.homeSubtitle(catalog.enabledCount),
                   style: theme.textTheme.bodyMedium, textAlign: TextAlign.center),
               const SizedBox(height: 32),
+              if (active != null) ...[
+                FilledButton.icon(
+                  onPressed: () => context.go('/play'),
+                  icon: const Icon(Icons.play_arrow_rounded),
+                  label: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text('${l.resumeGame}  ·  ${active.spec.size} × ${active.spec.size}',
+                        style: theme.textTheme.titleMedium),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(l.startNewGame,
+                    style: theme.textTheme.labelMedium, textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+              ],
               for (final size in const [3, 4, 5]) ...[
                 FilledButton(
                   onPressed: () {

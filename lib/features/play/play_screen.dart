@@ -42,7 +42,8 @@ class PlayScreen extends ConsumerWidget {
           IconButton(
             tooltip: l.backHome,
             onPressed: () {
-              ref.read(gameControllerProvider.notifier).clear();
+              // Keep the game active + persisted so Home offers "Resume".
+              ref.read(selectedCellProvider.notifier).select(null);
               context.go('/');
             },
             icon: const Icon(Icons.home_outlined),

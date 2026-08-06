@@ -11,6 +11,8 @@
     "placeholders": { "size": { "type": "int" } }
   },
   "newGame": "New game",
+  "resumeGame": "Resume game",
+  "startNewGame": "Or start a new game",
   "playAgain": "Play again",
   "backHome": "Home",
   "youWon": "Bingo! You spotted them all 🎉",

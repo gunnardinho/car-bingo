@@ -5,6 +5,8 @@
   "homeSubtitle": "{count} ting å speide etter. Velg brettstørrelse og kjør.",
   "boardSize": "{size} × {size}",
   "newGame": "Nytt spill",
+  "resumeGame": "Fortsett spillet",
+  "startNewGame": "Eller start et nytt spill",
   "playAgain": "Spill igjen",
   "backHome": "Hjem",
   "youWon": "Bingo! Du fant alle 🎉",
