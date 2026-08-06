@@ -135,7 +135,7 @@ void main() {
     // board must NOT survive on screen — state reconciles to what Drift holds.
     repo.failNextStart = true;
     ctrl.newGame(5);
-    await Future<void>.delayed(const Duration(milliseconds: 20)); // settle persist + reconcile
+    await pumpEventQueue(); // deterministically drain the unawaited persist + reconcile
 
     final restored = container.read(gameControllerProvider)!;
     expect(restored.boardId, boardA.boardId, reason: 'reconciled to the persisted board');

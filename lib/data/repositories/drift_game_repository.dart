@@ -154,9 +154,12 @@ class DriftGameRepository implements GameRepository {
       modes.map((m) => m.name).join(',');
 
   List<WinMode> _decodeWinModes(String csv) {
-    final modes = [
-      for (final name in csv.split(',').where((s) => s.isNotEmpty))
-        WinMode.values.byName(name),
+    final byName = {for (final m in WinMode.values) m.name: m};
+    // Tolerant on purpose: trim entries and drop unknown/renamed ones rather
+    // than throw, so a spec written by a future schema can't make loadActiveGame
+    // fail and block startup. A spec always resolves to >=1 win mode.
+    final modes = <WinMode>[
+      for (final raw in csv.split(',')) ?byName[raw.trim()],
     ];
     return modes.isEmpty ? const [WinMode.fullBoard] : modes;
   }

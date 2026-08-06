@@ -117,4 +117,40 @@ void main() {
         .insert(AppMetaCompanion.insert(key: 'active_board_id', value: 'ghost'));
     expect(await repo.loadActiveGame(), isNull);
   });
+
+  test('win-mode decoding tolerates unknown/whitespace entries (no throw)',
+      () async {
+    final g = _game();
+    await repo.startGame(g);
+
+    // Simulate a spec written by a future/renamed schema: unknown and blank
+    // entries must be ignored, not throw and block startup.
+    await _rewriteWinModes(db, g, 'fullBoard,  , bogusMode , lines');
+    expect((await repo.loadActiveGame())!.spec.winModes,
+        [WinMode.fullBoard, WinMode.lines]);
+
+    // Nothing valid -> fall back to the default win mode, still no throw.
+    await _rewriteWinModes(db, g, 'nonsense');
+    expect((await repo.loadActiveGame())!.spec.winModes, [WinMode.fullBoard]);
+  });
+}
+
+/// Upserts the persisted spec row for [g] with a raw [winModes] CSV, to exercise
+/// tolerant decoding of values the app itself would never write.
+Future<void> _rewriteWinModes(
+    AppDatabase db, PersistedGame g, String winModes) {
+  return db.into(db.boardSpecs).insertOnConflictUpdate(
+        BoardSpecsCompanion.insert(
+          boardId: g.boardId,
+          seed: g.spec.seed,
+          size: g.spec.size,
+          freeSpace: g.spec.freeSpace,
+          catalogVersion: g.spec.catalogVersion,
+          algoVersion: g.spec.algoVersion,
+          configHash: g.spec.configHash,
+          winModes: winModes,
+          mode: g.spec.mode,
+          createdAt: DateTime.now(),
+        ),
+      );
 }
