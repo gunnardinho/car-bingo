@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -89,8 +90,34 @@ class GameController extends Notifier<GameState?> {
       layout: layout,
       marks: <int>{},
     );
+    // Optimistic: show the new board immediately, then persist the switch. But
+    // switching boards is not an infallible best-effort write like a single
+    // toggle — if the durable write fails, keeping an unpersisted board on
+    // screen would silently lose the whole session on relaunch (§4). So on
+    // failure we reconcile in-memory state to whatever Drift actually holds.
     state = game;
-    _persist(() => _repo.startGame(game.toPersisted()));
+    unawaited(_persistStart(game));
+  }
+
+  Future<void> _persistStart(GameState game) async {
+    try {
+      await _repo.startGame(game.toPersisted());
+    } catch (e) {
+      debugPrint('startGame persistence failed: $e');
+      await _reconcileFromStorage();
+    }
+  }
+
+  /// Reload in-memory state from the durable store so the UI can never diverge
+  /// from what actually persisted (the fix for the swallowed-write data-loss
+  /// class in §4). Best-effort: a failure here leaves the optimistic state.
+  Future<void> _reconcileFromStorage() async {
+    try {
+      final active = await _repo.loadActiveGame();
+      state = active == null ? null : GameState.fromPersisted(active);
+    } catch (e) {
+      debugPrint('reconcile from storage failed: $e');
+    }
   }
 
   void toggle(int index) {

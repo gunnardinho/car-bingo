@@ -1,6 +1,8 @@
 import 'dart:math';
 
 import 'package:carbingo/app/di/providers.dart';
+import 'package:carbingo/domain/game/persisted_game.dart';
+import 'package:carbingo/domain/repositories/game_repository.dart';
 import 'package:carbingo/features/play/game_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,7 +14,7 @@ import '../../support/in_memory_game_repository.dart';
 /// repository, with the game controller seeded from [initialActiveGame] to
 /// simulate a relaunch.
 Future<ProviderContainer> _container(
-  InMemoryGameRepository repo, {
+  GameRepository repo, {
   bool restore = false,
 }) async {
   final initial = restore ? await repo.loadActiveGame() : null;
@@ -49,7 +51,11 @@ void main() {
     expect(saved.marks, isEmpty);
   });
 
-  test('toggle persists a mark; un-toggle persists marked=false (not deleted)',
+  // Scope: this asserts un-mark removes a cell from the ACTIVE marked set. The
+  // stronger §4 invariant (an un-mark is persisted as marked=false, never a row
+  // delete) is enforced against real SQLite in drift_game_repository_test.dart —
+  // it can't be observed through the repository interface here.
+  test('toggle marks a cell; un-toggle removes it from the active marked set',
       () async {
     final repo = InMemoryGameRepository();
     final container = await _container(repo);
@@ -62,7 +68,7 @@ void main() {
 
     ctrl.toggle(0); // un-mark
     final saved = await repo.loadActiveGame();
-    expect(saved!.marks, {1}, reason: 'cell 0 is now marked=false, not present');
+    expect(saved!.marks, {1}, reason: 'cell 0 no longer in the active marked set');
     expect(saved.boardId, boardId);
   });
 
@@ -113,4 +119,58 @@ void main() {
     expect(active.spec.size, 5);
     expect(active.marks, isEmpty, reason: 'previous board and its marks cleared');
   });
+
+  test('a failed board switch reconciles to the persisted board (no silent loss)',
+      () async {
+    final repo = _FailingStartRepo(InMemoryGameRepository());
+    final container = await _container(repo);
+    final ctrl = container.read(gameControllerProvider.notifier)..newGame(3);
+    final boardA = container.read(gameControllerProvider)!;
+    ctrl
+      ..toggle(0)
+      ..toggle(1);
+    expect((await repo.loadActiveGame())!.boardId, boardA.boardId);
+
+    // The next board switch fails to persist (e.g. disk-full). The optimistic
+    // board must NOT survive on screen — state reconciles to what Drift holds.
+    repo.failNextStart = true;
+    ctrl.newGame(5);
+    await Future<void>.delayed(const Duration(milliseconds: 20)); // settle persist + reconcile
+
+    final restored = container.read(gameControllerProvider)!;
+    expect(restored.boardId, boardA.boardId, reason: 'reconciled to the persisted board');
+    expect(restored.spec.size, 3);
+    expect(restored.marks, {0, 1}, reason: 'board A progress is intact');
+    expect((await repo.loadActiveGame())!.boardId, boardA.boardId);
+  });
+}
+
+/// Wraps the in-memory repo but can be armed to fail the next [startGame] once,
+/// simulating a local-write failure (disk-full / SQLITE_BUSY) during a board
+/// switch — the scenario the reconcile path must recover from.
+class _FailingStartRepo implements GameRepository {
+  final InMemoryGameRepository _inner;
+  bool failNextStart = false;
+
+  _FailingStartRepo(this._inner);
+
+  @override
+  Future<PersistedGame?> loadActiveGame() => _inner.loadActiveGame();
+
+  @override
+  Future<void> setMark({
+    required String boardId,
+    required int cellIndex,
+    required bool marked,
+  }) =>
+      _inner.setMark(boardId: boardId, cellIndex: cellIndex, marked: marked);
+
+  @override
+  Future<void> startGame(PersistedGame game) async {
+    if (failNextStart) {
+      failNextStart = false;
+      throw Exception('simulated disk-full');
+    }
+    return _inner.startGame(game);
+  }
 }

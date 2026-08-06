@@ -95,6 +95,22 @@ void main() {
     );
   });
 
+  test('even-sized board round-trips with a null free index (no free centre)',
+      () async {
+    // 4x4 has no free centre: cellItemIds has no null element, so freeIndex is
+    // reconstructed as null from JSON (the `indexOf(null) == -1` branch).
+    final g = _game(size: 4, marks: {0, 15});
+    await repo.startGame(g);
+
+    final loaded = await repo.loadActiveGame();
+    expect(loaded!.spec.size, 4);
+    expect(loaded.spec.freeIndex, isNull);
+    expect(loaded.layout.freeIndex, isNull);
+    expect(loaded.layout.cellItemIds, hasLength(16));
+    expect(loaded.layout.cellItemIds.whereType<Null>(), isEmpty);
+    expect(loaded.marks, {0, 15});
+  });
+
   test('a dangling active pointer (missing rows) yields no game', () async {
     await db
         .into(db.appMeta)
