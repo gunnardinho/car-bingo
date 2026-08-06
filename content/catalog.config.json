@@ -1,0 +1,12 @@
+{
+  "catalogVersion": "2026.08.0",
+  "algoVersion": 1,
+  "configHash": "cfg-mvp-1",
+  "categories": [
+    { "id": "road_signs", "sortOrder": 0, "color": "#E4572E", "name": { "en": "Road signs", "nb": "Trafikkskilt" } },
+    { "id": "vehicles",   "sortOrder": 1, "color": "#2E86AB", "name": { "en": "Vehicles",   "nb": "Kjøretøy" } },
+    { "id": "animals",    "sortOrder": 2, "color": "#6A994E", "name": { "en": "Animals",    "nb": "Dyr" } },
+    { "id": "nature",     "sortOrder": 3, "color": "#4C956C", "name": { "en": "Nature",     "nb": "Natur" } },
+    { "id": "buildings",  "sortOrder": 4, "color": "#C1666B", "name": { "en": "Buildings",  "nb": "Bygninger" } }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://carbingo.sigstad.no/schemas/item.schema.json",
+  "title": "Car Bingo catalog item",
+  "description": "Source-of-truth authoring shape for one road-item. Folder-per-item at content/items/<id>/item.json. Global fields (catalogVersion, algoVersion, categories) live in content/catalog.config.json, never per-item.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "schemaVersion", "categoryId", "difficulty", "weight", "enabled", "name", "image", "license"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "Stable identifier. Marks are stored by cell index, but generation selects by id — never rename an id in a shipped catalogVersion."
+    },
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "categoryId": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+    "subCategoryId": { "type": ["string", "null"], "pattern": "^[a-z0-9_]+$" },
+    "difficulty": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "1-5. Tier mapping used by the generator: 1-2 = easy, 3 = medium, 4-5 = hard."
+    },
+    "weight": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Integer sampling weight (floats break determinism). Higher = more likely to be picked within its tier."
+    },
+    "regions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["*"],
+      "description": "Region tags; \"*\" = everywhere."
+    },
+    "enabled": { "type": "boolean" },
+    "name": { "$ref": "#/$defs/localizedRequired" },
+    "description": { "$ref": "#/$defs/localizedOptional" },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["aspect", "format", "px"],
+      "properties": {
+        "aspect": { "type": "string", "enum": ["1:1"] },
+        "format": { "type": "string", "enum": ["webp"] },
+        "px": { "type": "integer", "enum": [256, 512, 1024] },
+        "master": {
+          "type": "string",
+          "description": "Master art filename within the item folder. Defaults to master.svg. The build rasterizes it and computes the content hash — never hand-write the hash."
+        }
+      }
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "type", "attributionRequired"],
+      "description": "Provenance. RECORDS a decision; it does not clear anything. AI art: keep model + prompt. Road signs: verify reuse terms before shipping.",
+      "properties": {
+        "source": { "type": "string", "description": "e.g. placeholder | statens_vegvesen | ai:<model> | internal" },
+        "type": { "type": "string", "description": "e.g. CC0-1.0 | CC-BY-4.0 | proprietary" },
+        "author": { "type": ["string", "null"] },
+        "attributionRequired": { "type": "boolean" },
+        "acquiredAt": { "type": ["string", "null"] },
+        "url": { "type": ["string", "null"] },
+        "prompt": { "type": ["string", "null"], "description": "For AI-generated art: the exact prompt, for provenance and store declaration." }
+      }
+    }
+  },
+  "$defs": {
+    "localizedRequired": {
+      "type": "object",
+      "required": ["en"],
+      "additionalProperties": false,
+      "properties": { "en": { "type": "string", "minLength": 1 } },
+      "patternProperties": { "^[a-z]{2}(-[A-Z]{2})?$": { "type": "string", "minLength": 1 } }
+    },
+    "localizedOptional": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": { "^[a-z]{2}(-[A-Z]{2})?$": { "type": "string", "minLength": 1 } }
+    }
+  }
+}

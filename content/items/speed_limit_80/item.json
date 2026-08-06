@@ -1,0 +1,32 @@
+{
+  "id": "speed_limit_80",
+  "schemaVersion": 1,
+  "categoryId": "road_signs",
+  "subCategoryId": "prohibition",
+  "difficulty": 1,
+  "weight": 3,
+  "regions": [
+    "*"
+  ],
+  "enabled": true,
+  "name": {
+    "en": "Speed limit 80",
+    "nb": "Fartsgrense 80"
+  },
+  "description": {
+    "en": "A round white sign with a red border showing 80.",
+    "nb": "Rundt hvitt skilt med rød kant og tallet 80."
+  },
+  "image": {
+    "aspect": "1:1",
+    "format": "webp",
+    "px": 512
+  },
+  "license": {
+    "source": "placeholder",
+    "type": "CC0-1.0",
+    "author": "generated",
+    "attributionRequired": false,
+    "acquiredAt": "2026-08-06"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "id": "lake",
+  "schemaVersion": 1,
+  "categoryId": "nature",
+  "subCategoryId": "water",
+  "difficulty": 1,
+  "weight": 2,
+  "regions": [
+    "*"
+  ],
+  "enabled": true,
+  "name": {
+    "en": "Lake",
+    "nb": "Innsjø"
+  },
+  "description": {
+    "en": "A calm blue lake.",
+    "nb": "En rolig blå innsjø."
+  },
+  "image": {
+    "aspect": "1:1",
+    "format": "webp",
+    "px": 512
+  },
+  "license": {
+    "source": "placeholder",
+    "type": "CC0-1.0",
+    "author": "generated",
+    "attributionRequired": false,
+    "acquiredAt": "2026-08-06"
+  }
+}

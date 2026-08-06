@@ -1,0 +1,32 @@
+{
+  "id": "moose_warning",
+  "schemaVersion": 1,
+  "categoryId": "road_signs",
+  "subCategoryId": "warning",
+  "difficulty": 3,
+  "weight": 1,
+  "regions": [
+    "*"
+  ],
+  "enabled": true,
+  "name": {
+    "en": "Moose warning",
+    "nb": "Elg"
+  },
+  "description": {
+    "en": "A warning triangle with a moose silhouette.",
+    "nb": "Faretrekant med elg-silhuett."
+  },
+  "image": {
+    "aspect": "1:1",
+    "format": "webp",
+    "px": 512
+  },
+  "license": {
+    "source": "placeholder",
+    "type": "CC0-1.0",
+    "author": "generated",
+    "attributionRequired": false,
+    "acquiredAt": "2026-08-06"
+  }
+}
