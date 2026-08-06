@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/local/drift/database.dart';
 import '../data/repositories/drift_game_repository.dart';
+import '../data/repositories/drift_outbox_repository.dart';
 import '../features/play/game_controller.dart';
 import 'app.dart';
 import 'di/providers.dart';
@@ -38,7 +39,8 @@ Future<void> bootstrap() async {
 /// must never stop the app from launching into a fresh, winnable game (P1 / §4).
 Future<GameState?> _restoreActiveGame(AppDatabase db) async {
   try {
-    final active = await DriftGameRepository(db).loadActiveGame();
+    final repo = DriftGameRepository(db, outbox: DriftOutboxRepository(db));
+    final active = await repo.loadActiveGame();
     return active == null ? null : GameState.fromPersisted(active);
   } catch (e) {
     debugPrint('active-game restore failed; launching fresh: $e');

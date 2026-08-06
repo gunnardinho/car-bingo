@@ -1,5 +1,7 @@
 import 'package:carbingo/data/local/drift/database.dart';
 import 'package:carbingo/data/repositories/drift_game_repository.dart';
+import 'package:carbingo/data/repositories/drift_outbox_repository.dart';
+import 'package:carbingo/data/repositories/drift_progress_reader.dart';
 import 'package:carbingo/domain/board/board_layout.dart';
 import 'package:carbingo/domain/board/board_spec.dart';
 import 'package:carbingo/domain/game/persisted_game.dart';
@@ -32,7 +34,7 @@ void main() {
 
   setUp(() {
     db = AppDatabase(NativeDatabase.memory());
-    repo = DriftGameRepository(db);
+    repo = DriftGameRepository(db, outbox: DriftOutboxRepository(db));
   });
   tearDown(() => db.close());
 
@@ -116,6 +118,41 @@ void main() {
         .into(db.appMeta)
         .insert(AppMetaCompanion.insert(key: 'active_board_id', value: 'ghost'));
     expect(await repo.loadActiveGame(), isNull);
+  });
+
+  test('setMark enqueues a sync job (coalesced); startGame clears it', () async {
+    final g = _game();
+    await repo.startGame(g);
+    expect(await db.select(db.syncOutbox).get(), isEmpty,
+        reason: 'fresh board has no marks to sync');
+
+    await repo.setMark(boardId: g.boardId, cellIndex: 0, marked: true);
+    await repo.setMark(boardId: g.boardId, cellIndex: 1, marked: true);
+    final jobs = await db.select(db.syncOutbox).get();
+    expect(jobs, hasLength(1), reason: 'two marks coalesce to one pending job');
+    expect(jobs.single.boardId, g.boardId);
+
+    // Starting a new game discards the previous board's pending sync.
+    await repo.startGame(_game(boardId: 'b2', size: 3));
+    expect(await db.select(db.syncOutbox).get(), isEmpty);
+  });
+
+  test('DriftProgressReader returns spec + marks (incl. un-marks), or null',
+      () async {
+    final reader = DriftProgressReader(db);
+    expect(await reader.readProgress('missing'), isNull);
+
+    final g = _game();
+    await repo.startGame(g);
+    await repo.setMark(boardId: g.boardId, cellIndex: 0, marked: true);
+    await repo.setMark(boardId: g.boardId, cellIndex: 1, marked: true);
+    await repo.setMark(boardId: g.boardId, cellIndex: 1, marked: false); // un-mark
+
+    final progress = await reader.readProgress(g.boardId);
+    expect(progress, isNotNull);
+    expect(progress!.spec.size, 5);
+    expect(progress.marks[0], isTrue);
+    expect(progress.marks[1], isFalse, reason: 'un-mark kept as false, not dropped');
   });
 
   test('win-mode decoding tolerates unknown/whitespace entries (no throw)',

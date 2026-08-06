@@ -62,10 +62,29 @@ class AppMeta extends Table {
   Set<Column> get primaryKey => {key};
 }
 
+/// One pending progress-sync job per board — the offline outbox (§4). The
+/// flusher reads the board's current spec + marks from Drift at push time, so
+/// repeated taps coalesce into this single row and always sync the latest state
+/// (an un-mark is already a `marked = false` row, so the pushed map is complete).
+/// Explicit ack/retry: on success the row is deleted; on failure `attempts` and
+/// `lastError` bump so a rejected write is detectable and re-drivable, not
+/// silently dropped.
+@DataClassName('StoredOutboxEntry')
+class SyncOutbox extends Table {
+  TextColumn get boardId => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  IntColumn get attempts => integer().withDefault(const Constant(0))();
+  TextColumn get lastError => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {boardId};
+}
+
 /// On-device store (Drift/SQLite). Local source of truth for in-flight board
-/// spec, layout, and progress until the Firestore outbox lands (§4). The outbox
-/// and catalog tables from §5 are deferred to their own increments.
-@DriftDatabase(tables: [BoardSpecs, BoardLayouts, PlayerMarks, AppMeta])
+/// spec, layout, progress, and the progress-sync outbox (§4). The catalog
+/// tables from §5 remain deferred to their own increment.
+@DriftDatabase(tables: [BoardSpecs, BoardLayouts, PlayerMarks, AppMeta, SyncOutbox])
 class AppDatabase extends _$AppDatabase {
   /// Test/DI seam: inject an executor (e.g. `NativeDatabase.memory()`).
   AppDatabase(super.executor);
@@ -74,5 +93,15 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.open() : super(driftDatabase(name: 'car_bingo'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        // v1 -> v2 adds the sync_outbox table; existing progress is untouched
+        // (never wipe user data on upgrade, §11).
+        onUpgrade: (m, from, to) async {
+          if (from < 2) await m.createTable(syncOutbox);
+        },
+      );
 }
