@@ -28,6 +28,12 @@ class AppLocalizationsNb extends AppLocalizations {
   String get newGame => 'Nytt spill';
 
   @override
+  String get resumeGame => 'Fortsett spillet';
+
+  @override
+  String get startNewGame => 'Eller start et nytt spill';
+
+  @override
   String get playAgain => 'Spill igjen';
 
   @override
