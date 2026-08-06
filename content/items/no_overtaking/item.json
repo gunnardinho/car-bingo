@@ -1,0 +1,32 @@
+{
+  "id": "no_overtaking",
+  "schemaVersion": 1,
+  "categoryId": "road_signs",
+  "subCategoryId": "prohibition",
+  "difficulty": 3,
+  "weight": 1,
+  "regions": [
+    "*"
+  ],
+  "enabled": true,
+  "name": {
+    "en": "No overtaking",
+    "nb": "Forbikjøring forbudt"
+  },
+  "description": {
+    "en": "Two cars side by side in a red-bordered circle.",
+    "nb": "To biler ved siden av hverandre i rød sirkel."
+  },
+  "image": {
+    "aspect": "1:1",
+    "format": "webp",
+    "px": 512
+  },
+  "license": {
+    "source": "placeholder",
+    "type": "CC0-1.0",
+    "author": "generated",
+    "attributionRequired": false,
+    "acquiredAt": "2026-08-06"
+  }
+}

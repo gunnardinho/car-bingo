@@ -1,0 +1,32 @@
+{
+  "id": "cow",
+  "schemaVersion": 1,
+  "categoryId": "animals",
+  "subCategoryId": "livestock",
+  "difficulty": 1,
+  "weight": 2,
+  "regions": [
+    "*"
+  ],
+  "enabled": true,
+  "name": {
+    "en": "Cow",
+    "nb": "Ku"
+  },
+  "description": {
+    "en": "A spotted cow in a field.",
+    "nb": "En flekkete ku på et jorde."
+  },
+  "image": {
+    "aspect": "1:1",
+    "format": "webp",
+    "px": 512
+  },
+  "license": {
+    "source": "placeholder",
+    "type": "CC0-1.0",
+    "author": "generated",
+    "attributionRequired": false,
+    "acquiredAt": "2026-08-06"
+  }
+}

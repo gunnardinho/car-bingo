@@ -1,0 +1,32 @@
+{
+  "id": "yield_sign",
+  "schemaVersion": 1,
+  "categoryId": "road_signs",
+  "subCategoryId": "priority",
+  "difficulty": 2,
+  "weight": 2,
+  "regions": [
+    "*"
+  ],
+  "enabled": true,
+  "name": {
+    "en": "Yield sign",
+    "nb": "Vikeplikt"
+  },
+  "description": {
+    "en": "A downward-pointing white triangle with a red border.",
+    "nb": "Hvit trekant som peker ned, med rød kant."
+  },
+  "image": {
+    "aspect": "1:1",
+    "format": "webp",
+    "px": 512
+  },
+  "license": {
+    "source": "placeholder",
+    "type": "CC0-1.0",
+    "author": "generated",
+    "attributionRequired": false,
+    "acquiredAt": "2026-08-06"
+  }
+}

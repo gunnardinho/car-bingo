@@ -1,0 +1,32 @@
+{
+  "id": "red_car",
+  "schemaVersion": 1,
+  "categoryId": "vehicles",
+  "subCategoryId": "car",
+  "difficulty": 1,
+  "weight": 3,
+  "regions": [
+    "*"
+  ],
+  "enabled": true,
+  "name": {
+    "en": "Red car",
+    "nb": "Rød bil"
+  },
+  "description": {
+    "en": "A small red passenger car.",
+    "nb": "En liten rød personbil."
+  },
+  "image": {
+    "aspect": "1:1",
+    "format": "webp",
+    "px": 512
+  },
+  "license": {
+    "source": "placeholder",
+    "type": "CC0-1.0",
+    "author": "generated",
+    "attributionRequired": false,
+    "acquiredAt": "2026-08-06"
+  }
+}

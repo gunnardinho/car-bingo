@@ -1,0 +1,32 @@
+{
+  "id": "gas_station",
+  "schemaVersion": 1,
+  "categoryId": "buildings",
+  "subCategoryId": "roadside",
+  "difficulty": 3,
+  "weight": 1,
+  "regions": [
+    "*"
+  ],
+  "enabled": true,
+  "name": {
+    "en": "Petrol station",
+    "nb": "Bensinstasjon"
+  },
+  "description": {
+    "en": "A fuel pump under a canopy.",
+    "nb": "En drivstoffpumpe under et tak."
+  },
+  "image": {
+    "aspect": "1:1",
+    "format": "webp",
+    "px": 512
+  },
+  "license": {
+    "source": "placeholder",
+    "type": "CC0-1.0",
+    "author": "generated",
+    "attributionRequired": false,
+    "acquiredAt": "2026-08-06"
+  }
+}

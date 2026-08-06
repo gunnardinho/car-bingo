@@ -1,0 +1,32 @@
+{
+  "id": "mountain",
+  "schemaVersion": 1,
+  "categoryId": "nature",
+  "subCategoryId": "terrain",
+  "difficulty": 2,
+  "weight": 2,
+  "regions": [
+    "*"
+  ],
+  "enabled": true,
+  "name": {
+    "en": "Mountain",
+    "nb": "Fjell"
+  },
+  "description": {
+    "en": "A snow-capped mountain peak.",
+    "nb": "En snødekt fjelltopp."
+  },
+  "image": {
+    "aspect": "1:1",
+    "format": "webp",
+    "px": 512
+  },
+  "license": {
+    "source": "placeholder",
+    "type": "CC0-1.0",
+    "author": "generated",
+    "attributionRequired": false,
+    "acquiredAt": "2026-08-06"
+  }
+}

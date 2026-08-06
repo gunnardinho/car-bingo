@@ -1,0 +1,36 @@
+{
+  "@@locale": "en",
+  "appTitle": "Car Bingo",
+  "homeHeadline": "Ready for a road trip?",
+  "homeSubtitle": "{count} things to spot. Pick a board size and go.",
+  "@homeSubtitle": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "boardSize": "{size} × {size}",
+  "@boardSize": {
+    "placeholders": { "size": { "type": "int" } }
+  },
+  "newGame": "New game",
+  "playAgain": "Play again",
+  "backHome": "Home",
+  "youWon": "Bingo! You spotted them all 🎉",
+  "freeSpace": "Free space",
+  "progress": "{done} of {total} marked",
+  "@progress": {
+    "placeholders": { "done": { "type": "int" }, "total": { "type": "int" } }
+  },
+  "tapToMark": "Tap a square when you spot it",
+  "cellMarked": "marked",
+  "cellNotMarked": "not marked",
+  "loadingCatalog": "Loading…",
+  "loadFailed": "Couldn''t load the catalog: {error}",
+  "@loadFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "detailEmpty": "Tap a square to see what to look for.",
+  "markIt": "Mark it",
+  "unmarkIt": "Unmark",
+  "difficultyEasy": "Easy",
+  "difficultyMedium": "Medium",
+  "difficultyHard": "Hard"
+}

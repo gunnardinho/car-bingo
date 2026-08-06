@@ -1,0 +1,32 @@
+{
+  "id": "slippery_road",
+  "schemaVersion": 1,
+  "categoryId": "road_signs",
+  "subCategoryId": "warning",
+  "difficulty": 4,
+  "weight": 1,
+  "regions": [
+    "*"
+  ],
+  "enabled": true,
+  "name": {
+    "en": "Slippery road",
+    "nb": "Glatt kjørebane"
+  },
+  "description": {
+    "en": "A warning triangle with a car and skid marks.",
+    "nb": "Faretrekant med bil og skrensespor."
+  },
+  "image": {
+    "aspect": "1:1",
+    "format": "webp",
+    "px": 512
+  },
+  "license": {
+    "source": "placeholder",
+    "type": "CC0-1.0",
+    "author": "generated",
+    "attributionRequired": false,
+    "acquiredAt": "2026-08-06"
+  }
+}

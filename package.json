@@ -1,0 +1,22 @@
+{
+  "name": "car-bingo-content",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Content pipeline for Car Bingo: validate item JSON, rasterize masters to WebP, and assemble the bundled catalog the Flutter app reads.",
+  "scripts": {
+    "seed": "node scripts/seed-items.mjs",
+    "placeholders": "node scripts/make-placeholders.mjs",
+    "validate": "node scripts/validate-catalog.mjs",
+    "build": "node scripts/build-catalog.mjs",
+    "content": "npm run seed && npm run placeholders && npm run validate && npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "sharp": "^0.34.0"
+  }
+}
