@@ -28,6 +28,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newGame => 'New game';
 
   @override
+  String get resumeGame => 'Resume game';
+
+  @override
+  String get startNewGame => 'Or start a new game';
+
+  @override
   String get playAgain => 'Play again';
 
   @override

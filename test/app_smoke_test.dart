@@ -1,13 +1,23 @@
 import 'package:carbingo/app/app.dart';
+import 'package:carbingo/app/di/providers.dart';
 import 'package:carbingo/features/play/widgets/board_grid.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/in_memory_game_repository.dart';
+
 void main() {
   testWidgets('loads bundled catalog, starts a 5×5, and renders the board',
       (tester) async {
-    await tester.pumpWidget(const ProviderScope(child: CarBingoApp()));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          gameRepositoryProvider.overrideWithValue(InMemoryGameRepository()),
+        ],
+        child: const CarBingoApp(),
+      ),
+    );
     // let the catalog FutureProvider resolve from the bundled asset
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));

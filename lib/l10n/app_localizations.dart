@@ -128,6 +128,18 @@ abstract class AppLocalizations {
   /// **'New game'**
   String get newGame;
 
+  /// No description provided for @resumeGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume game'**
+  String get resumeGame;
+
+  /// No description provided for @startNewGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Or start a new game'**
+  String get startNewGame;
+
   /// No description provided for @playAgain.
   ///
   /// In en, this message translates to:
