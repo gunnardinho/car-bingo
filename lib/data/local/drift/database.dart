@@ -94,8 +94,19 @@ class AppDatabase extends _$AppDatabase {
   /// Test/DI seam: inject an executor (e.g. `NativeDatabase.memory()`).
   AppDatabase(super.executor);
 
-  /// The app's on-disk database.
-  AppDatabase.open() : super(driftDatabase(name: 'car_bingo'));
+  /// The app's on-disk database. On web, Drift needs explicit paths to the
+  /// SQLite WASM build and its worker (both served from `web/`); native
+  /// platforms ignore the `web` options.
+  AppDatabase.open()
+      : super(
+          driftDatabase(
+            name: 'car_bingo',
+            web: DriftWebOptions(
+              sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+              driftWorker: Uri.parse('drift_worker.js'),
+            ),
+          ),
+        );
 
   @override
   int get schemaVersion => 3;
