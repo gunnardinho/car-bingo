@@ -43,10 +43,10 @@ Key properties:
 | Layer | File |
 |---|---|
 | domain | `domain/repositories/outbox_repository.dart`, `domain/sync/{outbox_entry,progress_gateway,progress_reader,board_progress,sync_coordinator}.dart`, `domain/auth/auth_service.dart` |
-| data | `data/local/drift/database.dart` (`SyncOutbox` table, schema **v2** + migration), `data/repositories/{drift_outbox_repository,drift_progress_reader,drift_game_repository}.dart`, `data/sync/{noop_auth_service,noop_progress_gateway}.dart`, `data/mappers/board_mappers.dart` |
+| data | `data/local/drift/database.dart` (`SyncOutbox` table, schema **v3** + migrations), `data/repositories/{drift_outbox_repository,drift_progress_reader,drift_game_repository}.dart`, `data/sync/{noop_auth_service,noop_progress_gateway}.dart`, `data/mappers/board_mappers.dart` |
 | DI | `app/di/providers.dart` — `outboxRepositoryProvider`, `progressReaderProvider`, `authServiceProvider`, `progressGatewayProvider`, `syncCoordinatorProvider` |
 
-Tests: outbox repo, migration (real v1→v2), progress reader, coordinator (happy /
+Tests: outbox repo, migration (real v1→v3 and v2→v3), progress reader, coordinator (happy /
 offline / retry / stale / completed), plus the existing game-repo integration.
 
 ---
@@ -127,8 +127,10 @@ class FirestoreProgressGateway implements ProgressGateway {
     await board.collection('players').doc(uid).set({
       'uid': uid,
       'marks': {for (final e in marks.entries) '${e.key}': {'m': e.value}},
-      'completedAt': completed ? FieldValue.serverTimestamp() : null,
       'updatedAt': FieldValue.serverTimestamp(),
+      // Write completedAt only while completed; with merge:true a later
+      // non-completed push writing null would clobber a prior completion.
+      if (completed) 'completedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 }

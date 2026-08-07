@@ -7,9 +7,10 @@ import 'package:sqlite3/sqlite3.dart';
 
 /// Migration safety (§11): upgrading must add the new table WITHOUT wiping user
 /// progress. Builds a real schema-v1 database by hand, then opens [AppDatabase]
-/// (schemaVersion 2) over it and asserts the upgrade ran correctly.
+/// (the current schemaVersion) over it and asserts the upgrade ran correctly.
 void main() {
-  test('v1 -> v2 adds sync_outbox and preserves existing progress', () async {
+  test('upgrading a v1 database adds sync_outbox and preserves existing progress',
+      () async {
     final dir = Directory.systemTemp.createTempSync('carbingo_mig');
     final path = '${dir.path}/app.sqlite';
 

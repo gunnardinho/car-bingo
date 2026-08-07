@@ -64,7 +64,8 @@ final progressReaderProvider = Provider<ProgressReader>(
 /// UID, so the outbox stays queued and play is never gated.
 final authServiceProvider = Provider<AuthService>((ref) => const NoopAuthService());
 
-/// Remote progress sink. No-op placeholder until Firestore is configured.
+/// Remote progress sink. Placeholder until Firestore is configured; it throws
+/// if ever reached, so the outbox retains the job for retry (never a silent drop).
 final progressGatewayProvider =
     Provider<ProgressGateway>((ref) => const NoopProgressGateway());
 
