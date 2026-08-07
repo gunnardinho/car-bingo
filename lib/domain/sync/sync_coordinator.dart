@@ -43,8 +43,8 @@ class SyncCoordinator {
           final progress = await reader.readProgress(entry.boardId);
           if (progress == null) {
             // Board was discarded locally (new game replaced it) — nothing to
-            // sync; drop the stale job.
-            await outbox.markSynced(entry.boardId);
+            // sync; drop the stale job (only if still this revision).
+            await outbox.markSynced(entry.boardId, entry.revision);
             continue;
           }
           final markedCells = {
@@ -58,10 +58,12 @@ class SyncCoordinator {
             marks: progress.marks,
             completed: hasWon(progress.spec, markedCells),
           );
-          await outbox.markSynced(entry.boardId);
+          // Ack only the revision we pushed; a mark made during the push bumped
+          // the revision, so its job survives for the next flush.
+          await outbox.markSynced(entry.boardId, entry.revision);
         } catch (e) {
           // Keep the job for a later retry; move on to the next board.
-          await outbox.markFailed(entry.boardId, e.toString());
+          await outbox.markFailed(entry.boardId, entry.revision, e.toString());
         }
       }
     } finally {

@@ -77,6 +77,11 @@ class SyncOutbox extends Table {
   IntColumn get attempts => integer().withDefault(const Constant(0))();
   TextColumn get lastError => text().nullable()();
 
+  /// Monotonic per-board change counter, bumped on every enqueue. The flusher
+  /// captures it before pushing and acks only the exact revision it sent, so a
+  /// mark made mid-push (which bumps the revision) is never acked away.
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+
   @override
   Set<Column> get primaryKey => {boardId};
 }
@@ -93,15 +98,18 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.open() : super(driftDatabase(name: 'car_bingo'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
-        // v1 -> v2 adds the sync_outbox table; existing progress is untouched
-        // (never wipe user data on upgrade, §11).
+        // Additive only; existing progress is never wiped on upgrade (§11).
         onUpgrade: (m, from, to) async {
-          if (from < 2) await m.createTable(syncOutbox);
+          if (from < 2) await m.createTable(syncOutbox); // fresh table has revision
+          // Only pre-v3 tables (created without it) need the column added.
+          if (from >= 2 && from < 3) {
+            await m.addColumn(syncOutbox, syncOutbox.revision);
+          }
         },
       );
 }

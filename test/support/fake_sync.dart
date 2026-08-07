@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:carbingo/domain/auth/auth_service.dart';
 import 'package:carbingo/domain/board/board_spec.dart';
 import 'package:carbingo/domain/repositories/outbox_repository.dart';
@@ -7,28 +9,37 @@ import 'package:carbingo/domain/sync/progress_gateway.dart';
 import 'package:carbingo/domain/sync/progress_reader.dart';
 
 /// Dependency-free fakes for the sync seam so [SyncCoordinator] can be tested
-/// without Drift or Firebase.
+/// without Drift or Firebase. The outbox mirrors the real revision/compare-ack
+/// semantics so coordinator tests can exercise the mid-flush race.
 
 class InMemoryOutboxRepository implements OutboxRepository {
   final Map<String, OutboxEntry> entries = {}; // boardId -> entry
 
   @override
   Future<void> enqueue(String boardId) async {
-    entries[boardId] = OutboxEntry(boardId: boardId); // reset attempts on a new change
+    final existing = entries[boardId];
+    entries[boardId] =
+        OutboxEntry(boardId: boardId, revision: (existing?.revision ?? 0) + 1);
   }
 
   @override
   Future<List<OutboxEntry>> pending() async => entries.values.toList();
 
   @override
-  Future<void> markSynced(String boardId) async => entries.remove(boardId);
+  Future<void> markSynced(String boardId, int revision) async {
+    if (entries[boardId]?.revision == revision) entries.remove(boardId);
+  }
 
   @override
-  Future<void> markFailed(String boardId, String error) async {
+  Future<void> markFailed(String boardId, int revision, String error) async {
     final e = entries[boardId];
-    if (e == null) return;
-    entries[boardId] =
-        OutboxEntry(boardId: boardId, attempts: e.attempts + 1, lastError: error);
+    if (e == null || e.revision != revision) return; // superseded → leave it
+    entries[boardId] = OutboxEntry(
+      boardId: boardId,
+      revision: e.revision,
+      attempts: e.attempts + 1,
+      lastError: error,
+    );
   }
 
   @override
@@ -54,6 +65,7 @@ class FakeAuthService implements AuthService {
 class RecordingProgressGateway implements ProgressGateway {
   final List<PushedProgress> pushes = [];
   bool throwOnPush = false;
+  final Set<String> failFor = {}; // boardIds that should fail this push
 
   @override
   Future<void> pushBoardProgress({
@@ -63,13 +75,46 @@ class RecordingProgressGateway implements ProgressGateway {
     required Map<int, bool> marks,
     required bool completed,
   }) async {
-    if (throwOnPush) throw Exception('network down');
+    if (throwOnPush || failFor.contains(boardId)) throw Exception('network down');
     pushes.add(PushedProgress(
       boardId: boardId,
       uid: uid,
       marks: Map.of(marks),
       completed: completed,
     ));
+  }
+}
+
+/// A gateway whose pushes block until [release] is called, so tests can interleave
+/// events with an in-flight push (reentrancy guard, mid-flush enqueue race).
+class GatedProgressGateway implements ProgressGateway {
+  final List<PushedProgress> pushes = [];
+  final Completer<void> _gate = Completer<void>();
+  final Completer<void> _firstPush = Completer<void>();
+
+  /// Completes when a push has begun (and is now waiting on the gate).
+  Future<void> get firstPushStarted => _firstPush.future;
+
+  void release() {
+    if (!_gate.isCompleted) _gate.complete();
+  }
+
+  @override
+  Future<void> pushBoardProgress({
+    required String boardId,
+    required BoardSpec spec,
+    required String uid,
+    required Map<int, bool> marks,
+    required bool completed,
+  }) async {
+    pushes.add(PushedProgress(
+      boardId: boardId,
+      uid: uid,
+      marks: Map.of(marks),
+      completed: completed,
+    ));
+    if (!_firstPush.isCompleted) _firstPush.complete();
+    await _gate.future;
   }
 }
 

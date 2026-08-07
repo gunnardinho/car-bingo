@@ -12,11 +12,14 @@ abstract interface class OutboxRepository {
   /// All boards awaiting a sync, oldest first.
   Future<List<OutboxEntry>> pending();
 
-  /// Acknowledge a successful push — removes the board's pending job.
-  Future<void> markSynced(String boardId);
+  /// Acknowledge a successful push of [revision]. No-op if the board was
+  /// re-enqueued since (its revision moved on), so a mark made mid-push is never
+  /// acked away.
+  Future<void> markSynced(String boardId, int revision);
 
-  /// Record a failed push so it retries later (bumps attempts, stores the error).
-  Future<void> markFailed(String boardId, String error);
+  /// Record a failed push of [revision] (bumps attempts, stores the error).
+  /// No-op if the board was re-enqueued since — the newer job supersedes it.
+  Future<void> markFailed(String boardId, int revision, String error);
 
   /// Drop all pending jobs (e.g. when the single active board is replaced).
   Future<void> clear();

@@ -57,6 +57,9 @@ void main() {
     expect(loaded.layout.cellItemIds, g.layout.cellItemIds);
     expect(loaded.layout.freeIndex, g.spec.freeIndex);
     expect(loaded.marks, {1, 2});
+    // A board that starts with progress must have a queued sync (§4).
+    expect(await db.select(db.syncOutbox).get(), hasLength(1),
+        reason: 'seeded marks enqueue a sync job');
   });
 
   test('setMark upserts; un-mark is stored as false, never deleted', () async {

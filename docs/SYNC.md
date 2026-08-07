@@ -31,6 +31,10 @@ Key properties:
   returns early and the job stays queued. Nothing is lost; it syncs later.
 - **Coalesced.** One outbox row per board; the flusher reads the *latest* marks at
   push time, so many taps become one write. Un-marks are kept as `false`.
+- **Safe ack.** Each enqueue bumps a monotonic per-board `revision`; the flusher
+  captures it before pushing and acks (deletes) only that exact revision. A mark
+  made during an in-flight push bumps the revision, so its job survives and syncs
+  on the next flush — the ack can never race a concurrent change away.
 - **Explicit retry.** A failed push bumps `attempts` + `lastError` and is retried;
   a job for a board that no longer exists locally is dropped.
 

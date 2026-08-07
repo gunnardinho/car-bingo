@@ -1539,6 +1539,18 @@ class $SyncOutboxTable extends SyncOutbox
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     boardId,
@@ -1546,6 +1558,7 @@ class $SyncOutboxTable extends SyncOutbox
     updatedAt,
     attempts,
     lastError,
+    revision,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1595,6 +1608,12 @@ class $SyncOutboxTable extends SyncOutbox
         lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
       );
     }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
     return context;
   }
 
@@ -1624,6 +1643,10 @@ class $SyncOutboxTable extends SyncOutbox
         DriftSqlType.string,
         data['${effectivePrefix}last_error'],
       ),
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
     );
   }
 
@@ -1640,12 +1663,18 @@ class StoredOutboxEntry extends DataClass
   final DateTime updatedAt;
   final int attempts;
   final String? lastError;
+
+  /// Monotonic per-board change counter, bumped on every enqueue. The flusher
+  /// captures it before pushing and acks only the exact revision it sent, so a
+  /// mark made mid-push (which bumps the revision) is never acked away.
+  final int revision;
   const StoredOutboxEntry({
     required this.boardId,
     required this.createdAt,
     required this.updatedAt,
     required this.attempts,
     this.lastError,
+    required this.revision,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1657,6 +1686,7 @@ class StoredOutboxEntry extends DataClass
     if (!nullToAbsent || lastError != null) {
       map['last_error'] = Variable<String>(lastError);
     }
+    map['revision'] = Variable<int>(revision);
     return map;
   }
 
@@ -1669,6 +1699,7 @@ class StoredOutboxEntry extends DataClass
       lastError: lastError == null && nullToAbsent
           ? const Value.absent()
           : Value(lastError),
+      revision: Value(revision),
     );
   }
 
@@ -1683,6 +1714,7 @@ class StoredOutboxEntry extends DataClass
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       attempts: serializer.fromJson<int>(json['attempts']),
       lastError: serializer.fromJson<String?>(json['lastError']),
+      revision: serializer.fromJson<int>(json['revision']),
     );
   }
   @override
@@ -1694,6 +1726,7 @@ class StoredOutboxEntry extends DataClass
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'attempts': serializer.toJson<int>(attempts),
       'lastError': serializer.toJson<String?>(lastError),
+      'revision': serializer.toJson<int>(revision),
     };
   }
 
@@ -1703,12 +1736,14 @@ class StoredOutboxEntry extends DataClass
     DateTime? updatedAt,
     int? attempts,
     Value<String?> lastError = const Value.absent(),
+    int? revision,
   }) => StoredOutboxEntry(
     boardId: boardId ?? this.boardId,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     attempts: attempts ?? this.attempts,
     lastError: lastError.present ? lastError.value : this.lastError,
+    revision: revision ?? this.revision,
   );
   StoredOutboxEntry copyWithCompanion(SyncOutboxCompanion data) {
     return StoredOutboxEntry(
@@ -1717,6 +1752,7 @@ class StoredOutboxEntry extends DataClass
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       attempts: data.attempts.present ? data.attempts.value : this.attempts,
       lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      revision: data.revision.present ? data.revision.value : this.revision,
     );
   }
 
@@ -1727,14 +1763,15 @@ class StoredOutboxEntry extends DataClass
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('attempts: $attempts, ')
-          ..write('lastError: $lastError')
+          ..write('lastError: $lastError, ')
+          ..write('revision: $revision')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(boardId, createdAt, updatedAt, attempts, lastError);
+      Object.hash(boardId, createdAt, updatedAt, attempts, lastError, revision);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1743,7 +1780,8 @@ class StoredOutboxEntry extends DataClass
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.attempts == this.attempts &&
-          other.lastError == this.lastError);
+          other.lastError == this.lastError &&
+          other.revision == this.revision);
 }
 
 class SyncOutboxCompanion extends UpdateCompanion<StoredOutboxEntry> {
@@ -1752,6 +1790,7 @@ class SyncOutboxCompanion extends UpdateCompanion<StoredOutboxEntry> {
   final Value<DateTime> updatedAt;
   final Value<int> attempts;
   final Value<String?> lastError;
+  final Value<int> revision;
   final Value<int> rowid;
   const SyncOutboxCompanion({
     this.boardId = const Value.absent(),
@@ -1759,6 +1798,7 @@ class SyncOutboxCompanion extends UpdateCompanion<StoredOutboxEntry> {
     this.updatedAt = const Value.absent(),
     this.attempts = const Value.absent(),
     this.lastError = const Value.absent(),
+    this.revision = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SyncOutboxCompanion.insert({
@@ -1767,6 +1807,7 @@ class SyncOutboxCompanion extends UpdateCompanion<StoredOutboxEntry> {
     required DateTime updatedAt,
     this.attempts = const Value.absent(),
     this.lastError = const Value.absent(),
+    this.revision = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : boardId = Value(boardId),
        createdAt = Value(createdAt),
@@ -1777,6 +1818,7 @@ class SyncOutboxCompanion extends UpdateCompanion<StoredOutboxEntry> {
     Expression<DateTime>? updatedAt,
     Expression<int>? attempts,
     Expression<String>? lastError,
+    Expression<int>? revision,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1785,6 +1827,7 @@ class SyncOutboxCompanion extends UpdateCompanion<StoredOutboxEntry> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (attempts != null) 'attempts': attempts,
       if (lastError != null) 'last_error': lastError,
+      if (revision != null) 'revision': revision,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1795,6 +1838,7 @@ class SyncOutboxCompanion extends UpdateCompanion<StoredOutboxEntry> {
     Value<DateTime>? updatedAt,
     Value<int>? attempts,
     Value<String?>? lastError,
+    Value<int>? revision,
     Value<int>? rowid,
   }) {
     return SyncOutboxCompanion(
@@ -1803,6 +1847,7 @@ class SyncOutboxCompanion extends UpdateCompanion<StoredOutboxEntry> {
       updatedAt: updatedAt ?? this.updatedAt,
       attempts: attempts ?? this.attempts,
       lastError: lastError ?? this.lastError,
+      revision: revision ?? this.revision,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1825,6 +1870,9 @@ class SyncOutboxCompanion extends UpdateCompanion<StoredOutboxEntry> {
     if (lastError.present) {
       map['last_error'] = Variable<String>(lastError.value);
     }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1839,6 +1887,7 @@ class SyncOutboxCompanion extends UpdateCompanion<StoredOutboxEntry> {
           ..write('updatedAt: $updatedAt, ')
           ..write('attempts: $attempts, ')
           ..write('lastError: $lastError, ')
+          ..write('revision: $revision, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2677,6 +2726,7 @@ typedef $$SyncOutboxTableCreateCompanionBuilder =
       required DateTime updatedAt,
       Value<int> attempts,
       Value<String?> lastError,
+      Value<int> revision,
       Value<int> rowid,
     });
 typedef $$SyncOutboxTableUpdateCompanionBuilder =
@@ -2686,6 +2736,7 @@ typedef $$SyncOutboxTableUpdateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<int> attempts,
       Value<String?> lastError,
+      Value<int> revision,
       Value<int> rowid,
     });
 
@@ -2720,6 +2771,11 @@ class $$SyncOutboxTableFilterComposer
 
   ColumnFilters<String> get lastError => $composableBuilder(
     column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2757,6 +2813,11 @@ class $$SyncOutboxTableOrderingComposer
     column: $table.lastError,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SyncOutboxTableAnnotationComposer
@@ -2782,6 +2843,9 @@ class $$SyncOutboxTableAnnotationComposer
 
   GeneratedColumn<String> get lastError =>
       $composableBuilder(column: $table.lastError, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
 }
 
 class $$SyncOutboxTableTableManager
@@ -2820,6 +2884,7 @@ class $$SyncOutboxTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> attempts = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
+                Value<int> revision = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncOutboxCompanion(
                 boardId: boardId,
@@ -2827,6 +2892,7 @@ class $$SyncOutboxTableTableManager
                 updatedAt: updatedAt,
                 attempts: attempts,
                 lastError: lastError,
+                revision: revision,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2836,6 +2902,7 @@ class $$SyncOutboxTableTableManager
                 required DateTime updatedAt,
                 Value<int> attempts = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
+                Value<int> revision = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncOutboxCompanion.insert(
                 boardId: boardId,
@@ -2843,6 +2910,7 @@ class $$SyncOutboxTableTableManager
                 updatedAt: updatedAt,
                 attempts: attempts,
                 lastError: lastError,
+                revision: revision,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

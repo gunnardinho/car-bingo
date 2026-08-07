@@ -56,4 +56,45 @@ void main() {
     await db.close();
     dir.deleteSync(recursive: true);
   });
+
+  test('v2 -> v3 adds the revision column (default 0) without losing outbox rows',
+      () async {
+    final dir = Directory.systemTemp.createTempSync('carbingo_mig2');
+    final path = '${dir.path}/app.sqlite';
+
+    // Hand-build a schema-v2 database: the v1 tables + a sync_outbox WITHOUT the
+    // revision column, user_version = 2, and one pending outbox row.
+    final raw = sqlite3.open(path);
+    raw.execute('''
+      CREATE TABLE board_specs (
+        board_id TEXT NOT NULL PRIMARY KEY, seed TEXT NOT NULL, size INTEGER NOT NULL,
+        free_space INTEGER NOT NULL, catalog_version TEXT NOT NULL, algo_version INTEGER NOT NULL,
+        config_hash TEXT NOT NULL, win_modes TEXT NOT NULL, mode TEXT NOT NULL, created_at INTEGER NOT NULL);
+      CREATE TABLE board_layouts (
+        board_id TEXT NOT NULL PRIMARY KEY, size INTEGER NOT NULL, cell_item_ids TEXT NOT NULL,
+        generated_at INTEGER NOT NULL);
+      CREATE TABLE player_marks (
+        board_id TEXT NOT NULL, cell_index INTEGER NOT NULL, marked INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL, PRIMARY KEY (board_id, cell_index));
+      CREATE TABLE app_meta (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL);
+      CREATE TABLE sync_outbox (
+        board_id TEXT NOT NULL PRIMARY KEY, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT);
+    ''');
+    raw.execute(
+        "INSERT INTO sync_outbox (board_id, created_at, updated_at, attempts) VALUES ('b1',1700000000,1700000000,2)");
+    raw.execute('PRAGMA user_version = 2');
+    raw.close();
+
+    // Open with drift -> triggers onUpgrade(2 -> 3) = addColumn(revision).
+    final db = AppDatabase(NativeDatabase(File(path)));
+
+    final rows = await db.select(db.syncOutbox).get();
+    expect(rows, hasLength(1), reason: 'pending outbox row preserved');
+    expect(rows.single.attempts, 2);
+    expect(rows.single.revision, 0, reason: 'new column defaults to 0');
+
+    await db.close();
+    dir.deleteSync(recursive: true);
+  });
 }
