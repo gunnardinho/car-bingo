@@ -2,22 +2,26 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
-import '../../domain/board/board_layout.dart';
-import '../../domain/board/board_spec.dart';
 import '../../domain/game/persisted_game.dart';
 import '../../domain/repositories/game_repository.dart';
+import '../../domain/repositories/outbox_repository.dart';
 import '../local/drift/database.dart';
+import '../mappers/board_mappers.dart';
 
 /// [GameRepository] backed by Drift/SQLite — the local source of truth for the
 /// active board and its progress (§4). Single-active-board for the MVP: starting
 /// a game replaces any previous one (a local history is a later increment), so
 /// the game tables never grow beyond one board.
+///
+/// Progress writes also record sync intent in the [OutboxRepository] within the
+/// same transaction, so a persisted mark can never exist without a pending sync.
 class DriftGameRepository implements GameRepository {
   static const _activeBoardKey = 'active_board_id';
 
   final AppDatabase db;
+  final OutboxRepository outbox;
 
-  DriftGameRepository(this.db);
+  DriftGameRepository(this.db, {required this.outbox});
 
   @override
   Future<PersistedGame?> loadActiveGame() async {
@@ -39,8 +43,8 @@ class DriftGameRepository implements GameRepository {
 
     return PersistedGame(
       boardId: boardId,
-      spec: _toSpec(spec),
-      layout: _toLayout(layout),
+      spec: boardSpecFromRow(spec),
+      layout: boardLayoutFromRow(layout),
       marks: {for (final m in markRows) m.cellIndex},
     );
   }
@@ -48,11 +52,13 @@ class DriftGameRepository implements GameRepository {
   @override
   Future<void> startGame(PersistedGame game) {
     return db.transaction(() async {
-      // Single active board: clear the previous one so storage stays bounded and
-      // no orphaned rows survive. Revisit when a completed-board history ships.
+      // Single active board: clear the previous one (and its pending sync) so
+      // storage stays bounded and no orphaned rows survive. Revisit when a
+      // completed-board history ships.
       await db.delete(db.playerMarks).go();
       await db.delete(db.boardLayouts).go();
       await db.delete(db.boardSpecs).go();
+      await outbox.clear();
 
       await db.into(db.boardSpecs).insert(_specCompanion(game));
       await db.into(db.boardLayouts).insert(_layoutCompanion(game));
@@ -61,6 +67,7 @@ class DriftGameRepository implements GameRepository {
       for (final index in game.marks) {
         await _upsertMark(game.boardId, index, true);
       }
+      if (game.marks.isNotEmpty) await outbox.enqueue(game.boardId);
 
       await _setMeta(_activeBoardKey, game.boardId);
     });
@@ -72,7 +79,12 @@ class DriftGameRepository implements GameRepository {
     required int cellIndex,
     required bool marked,
   }) {
-    return _upsertMark(boardId, cellIndex, marked);
+    // Persist the mark and record sync intent atomically — a mark can never be
+    // durable without a queued sync, and vice versa.
+    return db.transaction(() async {
+      await _upsertMark(boardId, cellIndex, marked);
+      await outbox.enqueue(boardId);
+    });
   }
 
   Future<void> _upsertMark(String boardId, int cellIndex, bool marked) {
@@ -100,7 +112,7 @@ class DriftGameRepository implements GameRepository {
         );
   }
 
-  // --- mapping ---
+  // --- mapping (row <- domain; row -> domain lives in board_mappers.dart) ---
 
   BoardSpecsCompanion _specCompanion(PersistedGame game) {
     final s = game.spec;
@@ -112,7 +124,7 @@ class DriftGameRepository implements GameRepository {
       catalogVersion: s.catalogVersion,
       algoVersion: s.algoVersion,
       configHash: s.configHash,
-      winModes: _encodeWinModes(s.winModes),
+      winModes: encodeWinModes(s.winModes),
       mode: s.mode,
       createdAt: DateTime.now(),
     );
@@ -125,42 +137,5 @@ class DriftGameRepository implements GameRepository {
       cellItemIds: jsonEncode(game.layout.cellItemIds),
       generatedAt: DateTime.now(),
     );
-  }
-
-  BoardSpec _toSpec(StoredBoardSpec r) => BoardSpec(
-        seed: r.seed,
-        size: r.size,
-        freeSpace: r.freeSpace,
-        catalogVersion: r.catalogVersion,
-        algoVersion: r.algoVersion,
-        configHash: r.configHash,
-        winModes: _decodeWinModes(r.winModes),
-        mode: r.mode,
-      );
-
-  BoardLayout _toLayout(StoredBoardLayout r) {
-    final ids = [
-      for (final e in jsonDecode(r.cellItemIds) as List) e as String?,
-    ];
-    final free = ids.indexOf(null); // -1 on even boards (no free centre)
-    return BoardLayout(
-      size: r.size,
-      cellItemIds: ids,
-      freeIndex: free == -1 ? null : free,
-    );
-  }
-
-  String _encodeWinModes(List<WinMode> modes) =>
-      modes.map((m) => m.name).join(',');
-
-  List<WinMode> _decodeWinModes(String csv) {
-    final byName = {for (final m in WinMode.values) m.name: m};
-    // Tolerant on purpose: trim entries and drop unknown/renamed ones rather
-    // than throw, so a spec written by a future schema can't make loadActiveGame
-    // fail and block startup. A spec always resolves to >=1 win mode.
-    final modes = <WinMode>[
-      for (final raw in csv.split(',')) ?byName[raw.trim()],
-    ];
-    return modes.isEmpty ? const [WinMode.fullBoard] : modes;
   }
 }

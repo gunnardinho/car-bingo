@@ -3,9 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/local/drift/database.dart';
 import '../../data/repositories/asset_catalog_repository.dart';
 import '../../data/repositories/drift_game_repository.dart';
+import '../../data/repositories/drift_outbox_repository.dart';
+import '../../data/repositories/drift_progress_reader.dart';
+import '../../data/sync/noop_auth_service.dart';
+import '../../data/sync/noop_progress_gateway.dart';
+import '../../domain/auth/auth_service.dart';
 import '../../domain/catalog/item.dart';
 import '../../domain/repositories/catalog_repository.dart';
 import '../../domain/repositories/game_repository.dart';
+import '../../domain/repositories/outbox_repository.dart';
+import '../../domain/sync/progress_gateway.dart';
+import '../../domain/sync/progress_reader.dart';
+import '../../domain/sync/sync_coordinator.dart';
 
 /// The catalog repository (bundled-asset impl for MVP). Overridable at the
 /// [ProviderScope] and in tests.
@@ -30,7 +39,42 @@ final appDatabaseProvider = Provider<AppDatabase>(
   },
 );
 
-/// Persistence for the active solo game (Drift-backed local source of truth, §4).
+/// The offline progress-sync outbox (Drift-backed).
+final outboxRepositoryProvider = Provider<OutboxRepository>(
+  (ref) => DriftOutboxRepository(ref.watch(appDatabaseProvider)),
+);
+
+/// Persistence for the active solo game. Enqueues sync intent atomically with
+/// mark writes via [outboxRepositoryProvider] (§4).
 final gameRepositoryProvider = Provider<GameRepository>(
-  (ref) => DriftGameRepository(ref.watch(appDatabaseProvider)),
+  (ref) => DriftGameRepository(
+    ref.watch(appDatabaseProvider),
+    outbox: ref.watch(outboxRepositoryProvider),
+  ),
+);
+
+/// Reads live board progress from Drift for the sync flusher.
+final progressReaderProvider = Provider<ProgressReader>(
+  (ref) => DriftProgressReader(ref.watch(appDatabaseProvider)),
+);
+
+// --- sync seam (Firebase-backed impls land in Phase 2; see docs/FIREBASE_SETUP.md) ---
+
+/// Anonymous auth. No-op placeholder until Firebase is configured — yields no
+/// UID, so the outbox stays queued and play is never gated.
+final authServiceProvider = Provider<AuthService>((ref) => const NoopAuthService());
+
+/// Remote progress sink. Placeholder until Firestore is configured; it throws
+/// if ever reached, so the outbox retains the job for retry (never a silent drop).
+final progressGatewayProvider =
+    Provider<ProgressGateway>((ref) => const NoopProgressGateway());
+
+/// Drains the outbox to the gateway once a real UID exists (§4).
+final syncCoordinatorProvider = Provider<SyncCoordinator>(
+  (ref) => SyncCoordinator(
+    outbox: ref.watch(outboxRepositoryProvider),
+    auth: ref.watch(authServiceProvider),
+    gateway: ref.watch(progressGatewayProvider),
+    reader: ref.watch(progressReaderProvider),
+  ),
 );
