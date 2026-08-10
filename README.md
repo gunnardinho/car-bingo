@@ -2,8 +2,10 @@
 
 Offline-first road-trip bingo for iOS and Android, built with Flutter. The full
 item catalog and tiles ship in the binary, so a first-ever launch works with zero
-connectivity; progress syncs to Firebase (Firestore + anonymous auth) when a
-connection is available.
+connectivity. Progress is saved locally and is designed to sync to Firebase
+(Firestore + anonymous auth) once the sync layer is activated — the offline engine
+is complete behind clean seams, but the Firebase adapters are not wired up yet (see
+[`docs/SYNC.md`](docs/SYNC.md)).
 
 ## Prerequisites
 
@@ -51,10 +53,10 @@ flutter run -d emulator-5554 # or any device id from the list above
 flutter run -d chrome
 ```
 
-> On this Windows dev box, `flutter` isn't on the git-bash PATH by default. Prefix
-> commands with:
+> On Windows/git-bash, `flutter` may not be on your PATH by default. Add your
+> Flutter `bin` directory to it (adjust the path to your install location):
 > ```bash
-> export PATH="$PATH:/c/Users/ZGP/flutter/bin"
+> export PATH="$PATH:/c/Users/<your-username>/flutter/bin"
 > ```
 
 ## Tests

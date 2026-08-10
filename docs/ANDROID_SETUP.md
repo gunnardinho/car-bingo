@@ -39,7 +39,7 @@ Android Studio → **More Actions ▸ SDK Manager ▸ SDK Tools** tab → check
 - Covers Pixel/Nexus. Other brands (Samsung / Xiaomi / OnePlus / etc.) may also
   need that vendor's USB driver from their website.
 
-**Checkpoint A:** SDK installed. Verify the toolchain (or ask Claude to run it):
+**Checkpoint A:** SDK installed. Verify the toolchain:
 ```bash
 export PATH="$PATH:/c/Users/ZGP/flutter/bin"
 flutter doctor
@@ -51,9 +51,9 @@ flutter config --android-sdk "C:/Users/ZGP/AppData/Local/Android/Sdk"
 
 ## 4. Accept the SDK licenses (interactive — run it yourself)
 
-In this session, type it with the `!` prefix so the output is captured:
+This prompts for input, so run it in an interactive terminal:
 ```
-! export PATH="$PATH:/c/Users/ZGP/flutter/bin"; flutter doctor --android-licenses
+export PATH="$PATH:/c/Users/ZGP/flutter/bin"; flutter doctor --android-licenses
 ```
 Press **y** through all prompts.
 
@@ -65,7 +65,7 @@ Press **y** through all prompts.
 - Accept the **"Allow USB debugging?"** RSA prompt on the phone → check
   **Always allow** → **OK**.
 
-**Checkpoint B:** Verify the phone is seen (or ask Claude to run it):
+**Checkpoint B:** Verify the phone is seen:
 ```bash
 export PATH="$PATH:/c/Users/ZGP/AppData/Local/Android/Sdk/platform-tools:/c/Users/ZGP/flutter/bin"
 adb devices        # phone must show as "device", not "unauthorized"
@@ -125,7 +125,7 @@ flutter run
    ```bash
    firebase firestore:delete "boards/smoke" --recursive --force
    ```
-   (Or delete `boards/smoke` in the console.) Claude can run this for you.
+   (Or delete `boards/smoke` in the console.)
 
 ---
 

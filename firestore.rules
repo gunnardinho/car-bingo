@@ -13,8 +13,14 @@ service cloud.firestore {
       match /players/{playerId} {
         allow read:  if request.auth.uid in
                         get(/databases/$(database)/documents/boards/$(boardId)).data.memberUids;
+        // A player may write only their own doc, and only into a board they
+        // belong to. The no-parent-board case keeps the setup smoke-test write
+        // (boards/smoke, which has no board doc) working.
         allow write: if request.auth.uid == playerId &&
-                        request.resource.data.uid == playerId;
+                        request.resource.data.uid == playerId &&
+                        (!exists(/databases/$(database)/documents/boards/$(boardId)) ||
+                         request.auth.uid in
+                           get(/databases/$(database)/documents/boards/$(boardId)).data.memberUids);
       }
     }
   }
