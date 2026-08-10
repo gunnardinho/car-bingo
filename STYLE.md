@@ -247,15 +247,29 @@ same visual family. Then run every output through the same pipeline (§10).
 ### 9.1 Prompt scaffold (fill the `<slots>`)
 
 ```
-A single <SUBJECT>, centered, as a die-cut sticker illustration.
-Square 1:1 composition, centered with even padding on all sides. Bold,
-playful, minimal — chunky rounded shapes, thick clean interior lines,
-high contrast. Vibrant flat colors from this palette: <2–3 HEX FROM §2>.
-Wrapped in a THICK EVEN WHITE STICKER BORDER that hugs the subject's
+A single <SUBJECT>, in <ORIENTATION> (e.g. standing side profile),
+centered, as a die-cut sticker illustration. Square 1:1 composition,
+centered with even padding on all sides. Bold, playful, minimal — chunky
+rounded shapes, thick clean interior lines, high contrast. Instantly
+recognizable at tiny sizes; simplify away fine detail. Using ONLY these
+colors: <HEX>, <HEX>, <HEX>, plus white — no other colors. Wrapped in a
+THICK EVEN WHITE STICKER BORDER that closely follows the subject's
 outline. Fully TRANSPARENT background (PNG with alpha) — no scene, no
-ground, no cast shadow. One subject only, simple and iconic, readable as
-a tiny icon. No text, no letters, no watermark.
+ground, no cast shadow. One subject only. No text, no letters, no
+watermark.
 ```
+
+Why each clause is there (from real icon-set experience):
+- **`<ORIENTATION>` (e.g. standing side profile)** — pins the pose so the set doesn't
+  drift between front- and side-facing. Use the *same* orientation for every item in a
+  category (§9.2).
+- **"Using ONLY these colors …, plus white — no other colors"** — a hard allow-list
+  prevents the model sneaking in stray hues. List exact hex (≤ 4 + the white outline,
+  per §8.2).
+- **"Instantly recognizable at tiny sizes; simplify away fine detail"** — forces the
+  silhouette-first simplification the 48 px squint test (§8.2) checks for.
+- **"THICK EVEN WHITE STICKER BORDER that closely follows the subject's outline"** —
+  keeps the die-cut border uniform tile-to-tile, which is what unifies the set.
 
 > **Aspect ratio is a *parameter*, not prose.** The "square 1:1" line above
 > reinforces the intent, but you must also set the model's size/aspect control to a
@@ -268,28 +282,32 @@ a tiny icon. No text, no letters, no watermark.
 photo, photorealistic, 3d render, gradient mesh, busy background, scene,
 multiple objects, solid background, colored background, drop shadow on
 background, text, letters, numbers, watermark, signature, clipped edges,
-thin or uneven border, non-square, portrait, landscape, noise, grain
+thin or uneven border, extra colors, off-palette colors, mixed
+orientation, non-square, portrait, landscape, noise, grain
 ```
 
-### 9.2 Per-category prompt hints
+### 9.2 Per-category orientation & palette
 
-Pick the subject's accent from §2 — these are *hints* for the subject's fills; the
-background stays transparent:
+**Lock one orientation per category and hold every item in that category to it** —
+mixed front/side views within a category are the single most common thing that breaks
+a set's consistency. The colors below are the *only* colors for that category's
+subjects (plus the white outline); feed them into the "Using ONLY these colors" slot.
 
-| Category | Lead accent(s) | Hint |
+| Category | Orientation (fixed) | Use ONLY these colors |
 |---|---|---|
-| Road signs | sign's real colors | accurate pictogram; keep legal palette |
-| Vehicles | Blue `#2E86AB`, Sky `#1B9AAA` | side/front-on, chunky wheels |
-| Animals | Grass `#6A994E`, Sunshine `#F6BD60` | friendly, front-facing, big features |
-| Nature | Teal `#4C956C`, Sunshine `#F6BD60` | single element (one tree, one sun) |
-| Buildings | Terracotta `#C1666B`, Coral `#E4572E` | one structure, head-on elevation |
+| Road signs | flat front-on pictogram | the sign's real, legal colors |
+| Vehicles | **side profile** (side-on), chunky wheels | Blue `#2E86AB`, Sky `#1B9AAA`, Ink `#16212B` |
+| Animals | **standing side profile**, big friendly features | Grass `#6A994E`, Sunshine `#F6BD60`, Ink `#16212B` |
+| Nature | front-on, single element (one tree, one sun) | Teal `#4C956C`, Sunshine `#F6BD60`, Ink `#16212B` |
+| Buildings | head-on elevation, one structure | Terracotta `#C1666B`, Coral `#E4572E`, Ink `#16212B` |
 
 ### 9.3 Consistency workflow
 
 1. Lock a **reference image** (one approved hero sticker) and pass it to the model
    for style transfer on every generation — this keeps the **white border width and
    the flat look uniform**, which is the whole game.
-2. Keep a **stable seed** per batch; vary only `<SUBJECT>`.
+2. Batch **by category**: keep a stable seed, the fixed `<ORIENTATION>`, and the
+   category's color allow-list constant across the batch — vary only `<SUBJECT>`.
 3. Save the **exact prompt + model + seed** into `item.json` `license` (§11).
 4. Generate **square 1:1 at ≥ 1024×1024** (set the size/aspect parameter — see the
    note under §9.1), then let the pipeline downscale to the 512 export target.
