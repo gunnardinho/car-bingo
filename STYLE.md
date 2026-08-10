@@ -207,9 +207,9 @@ intentional set instead of a scrapbook.
 
 | Property | Value |
 |---|---|
-| Master format | **SVG** (vector) preferred; **transparent PNG** accepted for AI output |
+| Master format | **SVG** (vector, already transparent) preferred; **PNG on a solid chroma-key background** for AI output |
 | Authoring canvas | **512 × 512**, aspect **1:1** only |
-| Background | **Transparent.** Never bake a solid background — the app draws the themed `cellBackground` behind the sticker. |
+| Background | **Solid flat chroma-key colour** (default magenta `#FF00FF`) filling the whole canvas for raster/AI masters — the build keys it out to transparency (§10). Vector SVG masters use true transparency instead. Either way the final tile is transparent so the themed `cellBackground` shows through. Never a shaded/gradient background — the key needs one flat colour. |
 | White outline (die-cut) | Uniform white keyline hugging the subject silhouette, **≈ 16–20 px on the 512 canvas**. Consistent width across all tiles. |
 | Safe area | Subject + its outline fully inside the center **≈ 430 × 430** box (the build adds a transparent margin so the outline never touches the cell edge). |
 | Corner radius | Applied by the *cell* to the background, not to the art. Do not bake corners into the sticker. |
@@ -255,8 +255,9 @@ rounded shapes, thick clean interior lines, high contrast. Instantly
 recognizable at tiny sizes; simplify away fine detail. Using ONLY these
 colors: <HEX>, <HEX>, <HEX>, plus white — no other colors. Wrapped in a
 THICK EVEN WHITE STICKER BORDER that closely follows the subject's
-outline. Fully TRANSPARENT background (PNG with alpha) — no scene, no
-ground, no cast shadow. One subject only. No text, no letters, no
+outline. Place it on a SOLID FLAT MAGENTA background (#FF00FF) that
+completely fills the frame — no transparency, no scene, no ground, no
+cast shadow, no gradient. One subject only. No text, no letters, no
 watermark.
 ```
 
@@ -271,6 +272,13 @@ Why each clause is there (from real icon-set experience):
   silhouette-first simplification the 48 px squint test (§8.2) checks for.
 - **"THICK EVEN WHITE STICKER BORDER that closely follows the subject's outline"** —
   keeps the die-cut border uniform tile-to-tile, which is what unifies the set.
+- **"SOLID FLAT MAGENTA background (#FF00FF)"** — AI models can't reliably emit real
+  alpha, and the white border can't be separated from a *white* background. So we
+  generate on a flat chroma colour the build keys out to transparency; the white
+  border survives because it isn't the key colour. **Never use a subject colour near
+  the key** (the §9.2 allow-lists are browns/blues/greens — all safely far from
+  magenta). If a subject genuinely needs magenta, set a different `chromaKey` in
+  `content/catalog.config.json` (e.g. green `#00FF00`).
 
 > **Aspect ratio is a *parameter*, not prose.** The "square 1:1" line above
 > reinforces the intent, but you must also set the model's size/aspect control to a
@@ -281,9 +289,10 @@ Why each clause is there (from real icon-set experience):
 **Negative prompt:**
 ```
 photo, photorealistic, 3d render, gradient mesh, busy background, scene,
-multiple objects, solid background, colored background, drop shadow on
-background, text, letters, numbers, watermark, signature, clipped edges,
-thin or uneven border, extra colors, off-palette colors, mixed
+multiple objects, transparent background, checkerboard, gradient
+background, shaded background, drop shadow on background, text, letters,
+numbers, watermark, signature, clipped edges, thin or uneven border,
+extra colors, off-palette colors, magenta on the subject, mixed
 orientation, non-square, portrait, landscape, noise, grain
 ```
 
@@ -320,18 +329,23 @@ subjects (plus the white outline); feed them into the "Using ONLY these colors" 
 Raw AI output is never shipped directly. Normalize it, drop it in
 `content/items/<id>/master.(svg|png)`, then let the build enforce the frame:
 
-1. **Clean the alpha:** remove any background matte / halo so the surround is
-   *truly transparent* (this is what lets the themed background show).
+1. **Flatten the background to the flat key colour:** ensure the surround is an even
+   magenta `#FF00FF` with no gradient, shadow, or noise, and that **no subject colour
+   is near the key** (§9.1). The build keys this out — a shaded/mottled background
+   leaves a fringe.
 2. **Verify the white border** is present and even; trim & center the subject.
-3. Set `item.json` `image` (`px`, `master` filename, `format`).
+3. Set `item.json` `image` — for a non-default master, set `master` (e.g.
+   `"master.png"`); `format` stays `webp` (it's the built-tile output). Update the
+   `license` block (§11).
 4. Run the pipeline:
    ```bash
    npm run validate && npm run build
    ```
-   `build-catalog.mjs` treats every tile identically: contain into the inner box, add
-   a uniform **transparent** safe-area margin, export **WebP with alpha** (no
-   flatten). Corner rounding and the background color are the app's job, not the
-   file's.
+   `build-catalog.mjs` frames every tile identically: contain into the inner box,
+   **key the chroma background out to alpha** (raster masters only — SVGs are already
+   transparent), add a uniform **transparent** safe-area margin, export **WebP with
+   alpha** (no flatten). Corner rounding and background colour are the app's job. The
+   key colour is configurable via `chromaKey` in `content/catalog.config.json`.
 5. Eyeball it in a real cell against multiple themes: `flutter run -d chrome`.
 
 Placeholders (`make-placeholders.mjs`) already emit v2-correct die-cut stickers — a
@@ -357,11 +371,13 @@ nothing.
 
 ## 12. Production checklist (per tile)
 
-- [ ] 512-authored, **transparent background**, one centered subject
+- [ ] 512-authored, one centered subject on a **flat magenta `#FF00FF` background**
+      (raster) or **true transparency** (vector SVG)
 - [ ] Uniform **white die-cut outline** hugging the silhouette (≈ 16–20 px @ 512)
-- [ ] Vibrant, ≤ 4 colors, high contrast; reads on white **and** dark **and** red
+- [ ] Vibrant, ≤ 4 colors, high contrast; reads on white **and** dark **and** red;
+      **no subject colour near the key**
 - [ ] Passes the **48 px squint test**
-- [ ] **No baked-in text**; no baked background; no baked corners/shadow
+- [ ] **No baked-in text**; no baked corners/shadow; no gradient/shaded background
 - [ ] `item.json` `license` filled with real provenance (prompt for AI)
 - [ ] `difficulty` reflects real-world spot-rarity (Easy 1–2 / Medium 3 / Hard 4–5)
 - [ ] `npm run validate && npm run build` pass; eyeballed in a cell across themes
@@ -377,7 +393,8 @@ nothing.
 | Playful accent palette, radius scale, spacing scale | `lib/core/theme/bingo_tokens.dart` → `BingoPalette` / `AppRadii` / `AppSpacing` |
 | Themed variants (e.g. Christmas) | additional `BingoTokens` presets (see §7) |
 | Category colors (data, unused in chrome) | `content/catalog.config.json` |
-| Transparent tile export + safe-area margin | `scripts/build-catalog.mjs` |
+| Chroma-key colour (`chromaKey`), sticker margin ratio | `content/catalog.config.json` |
+| Chroma-key + transparent tile export + safe-area margin | `scripts/build-catalog.mjs` |
 | Die-cut placeholder stickers | `scripts/make-placeholders.mjs` |
 
 ---
@@ -396,3 +413,6 @@ nothing.
   (rounded font recommendation), radius/spacing scales, motion, component specs.
 - The build now exports **transparent WebP** (alpha preserved); background color and
   corner rounding are applied by the app, not baked per tile.
+- Raster/AI masters are authored on a **flat chroma-key background** (magenta
+  `#FF00FF`) that the build keys out to transparency — a reliable substitute for the
+  true alpha AI models can't emit, and it preserves the white die-cut outline.
