@@ -242,8 +242,8 @@ the shared outline and flat style.
 
 ## 9. AI sticker generation template
 
-Use one **fixed scaffold + a reference image + a stable seed** so outputs land in the
-same visual family. Then run every output through the same pipeline (§10).
+Use one **fixed scaffold + a reference image** so outputs land in the same visual
+family. Then run every output through the same pipeline (§10).
 
 ### 9.1 Prompt scaffold (fill the `<slots>`)
 
@@ -307,9 +307,9 @@ subjects (plus the white outline); feed them into the "Using ONLY these colors" 
 1. Lock a **reference image** (one approved hero sticker) and pass it to the model
    for style transfer on every generation — this keeps the **white border width and
    the flat look uniform**, which is the whole game.
-2. Batch **by category**: keep a stable seed, the fixed `<ORIENTATION>`, and the
-   category's color allow-list constant across the batch — vary only `<SUBJECT>`.
-3. Save the **exact prompt + model + seed** into `item.json` `license` (§11).
+2. Batch **by category**: keep the fixed `<ORIENTATION>` and the category's color
+   allow-list constant across the batch — vary only `<SUBJECT>`.
+3. Save the **exact prompt + model** into `item.json` `license` (§11).
 4. Generate **square 1:1 at ≥ 1024×1024** (set the size/aspect parameter — see the
    note under §9.1), then let the pipeline downscale to the 512 export target.
 
@@ -347,8 +347,8 @@ items).
 Every `item.json` records a `license` block. It **records** a decision; it clears
 nothing.
 
-- **AI art:** `source: "ai:<model>"`, keep the **exact `prompt`** and `seed`, prefer a
-  model with clear commercial terms, expect to declare AI use at store review.
+- **AI art:** `source: "ai:<model>"`, keep the **exact `prompt`**, prefer a model with
+  clear commercial terms, expect to declare AI use at store review.
 - **Road signs:** verify reuse terms first; if Statens vegvesen, set
   `source: "statens_vegvesen"`, the real `type`/`url`, and `attributionRequired`.
 - **Placeholders (current):** `source: "placeholder"`, `type: "CC0-1.0"`.
@@ -362,7 +362,7 @@ nothing.
 - [ ] Vibrant, ≤ 4 colors, high contrast; reads on white **and** dark **and** red
 - [ ] Passes the **48 px squint test**
 - [ ] **No baked-in text**; no baked background; no baked corners/shadow
-- [ ] `item.json` `license` filled with real provenance (prompt/seed for AI)
+- [ ] `item.json` `license` filled with real provenance (prompt for AI)
 - [ ] `difficulty` reflects real-world spot-rarity (Easy 1–2 / Medium 3 / Hard 4–5)
 - [ ] `npm run validate && npm run build` pass; eyeballed in a cell across themes
 

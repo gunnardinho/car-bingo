@@ -61,12 +61,14 @@ const dirs = (await readdir(ITEMS_DIR, { withFileTypes: true })).filter((d) => d
 
 let written = 0, skipped = 0;
 for (const id of dirs) {
-  const master = join(ITEMS_DIR, id, 'master.svg');
   const item = JSON.parse(await readFile(join(ITEMS_DIR, id, 'item.json'), 'utf8'));
+  // Honor the item's DECLARED master (image.master, default master.svg) so an item
+  // that already ships real art — svg, png, ... — never gets a stray placeholder.
+  const declaredMaster = join(ITEMS_DIR, id, item.image?.master ?? 'master.svg');
   // Only an EXPLICIT placeholder source is force-regenerable. A missing source is
   // treated as real art so a forgotten field can never let --force clobber it.
   const isPlaceholder = item.license?.source === 'placeholder';
-  if (await exists(master)) {
+  if (await exists(declaredMaster)) {
     // Regenerate only in --force mode, and only for placeholder items — never
     // clobber real illustrations.
     if (!(FORCE && isPlaceholder)) { skipped++; continue; }
@@ -100,7 +102,8 @@ for (const id of dirs) {
   </g>
 </svg>
 `;
-  await writeFile(master, svg, 'utf8');
+  // Placeholders are always SVG, regardless of what an item declares as its master.
+  await writeFile(join(ITEMS_DIR, id, 'master.svg'), svg, 'utf8');
   written++;
 }
 
