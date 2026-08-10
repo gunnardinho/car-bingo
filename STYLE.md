@@ -178,11 +178,12 @@ Because the cell background is the single token `BingoTokens.cellBackground`, a 
 new seasonal look is a token override — no art changes. Example Christmas theme:
 
 ```dart
-// A festive variant: same die-cut stickers, red board.
-static const christmas = BingoTokens(
-  cellBackground: Color(0xFFB3261E), // deep Christmas red
-  cellFree: Color(0xFF2E7D32),       // green free space
-  // ...the rest inherited/tuned as needed
+// A festive variant: same die-cut stickers, red board. Derive from a preset with
+// copyWith so only the overridden tokens change (const constructor needs every arg,
+// so this is `static final`, not `static const`).
+static final christmas = BingoTokens.light.copyWith(
+  cellBackground: const Color(0xFFB3261E), // deep Christmas red
+  cellFree: const Color(0xFF2E7D32),       // green free space
 );
 ```
 

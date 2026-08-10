@@ -24,6 +24,13 @@ const config = JSON.parse(await readFile(CONFIG, 'utf8'));
 // outline never touches the cell edge; corner rounding + background color are the
 // app's job, never baked into the WebP.
 const MARGIN_RATIO = config.stickerMarginRatio ?? 0.08;
+// Guard against a misconfigured ratio: <0 or >=0.5 makes the inner box zero/negative
+// and Sharp throws a cryptic resize error further down. Fail early and clearly.
+if (typeof MARGIN_RATIO !== 'number' || !(MARGIN_RATIO >= 0 && MARGIN_RATIO < 0.5)) {
+  throw new Error(
+    `catalog.config.json "stickerMarginRatio" must be a number in [0, 0.5); got ${JSON.stringify(MARGIN_RATIO)}`,
+  );
+}
 const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
 
 // fresh output so removed items never leave orphan tiles behind

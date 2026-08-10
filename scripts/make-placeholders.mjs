@@ -4,9 +4,10 @@
 // REGENERATE existing masters, but ONLY for items whose license source is
 // "placeholder" — real art (any other source) is never overwritten. Use this to
 // refresh placeholders after a style change. Placeholders follow the v2 sticker
-// language in STYLE.md: a vibrant accent glyph on a solid WHITE background (the
-// app's cell clip supplies the rounded corners, and build-catalog.mjs adds the
-// uniform white border margin). Item NAMES are drawn by the app, never baked in.
+// language in STYLE.md: a vibrant accent glyph with a white die-cut outline on a
+// TRANSPARENT background (the app's cell clip rounds the corners and paints the
+// themed backdrop; build-catalog.mjs adds a uniform transparent safe-area
+// margin). Item NAMES are drawn by the app, never baked in.
 //
 //   node scripts/make-placeholders.mjs [--force]
 
@@ -16,20 +17,19 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const ITEMS_DIR = join(ROOT, 'content', 'items');
-const CONFIG = join(ROOT, 'content', 'catalog.config.json');
 
 const exists = (p) => access(p).then(() => true).catch(() => false);
 
 function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 
-// Playful accent palette (STYLE.md §2), restricted to hues with strong contrast
-// on white for a solid glyph fill (Sunshine is too light as a fill, so it's
-// omitted here). Category color is intentionally NOT used for placeholder art in
-// v2 — it stays in the data model only.
+// Playful accent palette (STYLE.md §2), restricted to mid-dark hues that read well
+// as a solid glyph fill inside the white die-cut outline (Sunshine is too light, so
+// it's omitted here). Category color is intentionally NOT used for placeholder art
+// in v2 — it stays in the data model only.
 const PALETTE = ['#2E86AB', '#E4572E', '#6A994E', '#4C956C', '#C1666B', '#8E44AD', '#1B9AAA'];
 
-// --- category glyphs ({fg} = accent fill/stroke, {bg} = white cut-outs), drawn
-// centered on a 512 canvas ---
+// --- category glyphs ({fg} = accent fill/stroke, {bg} = transparent cut-outs so the
+// themed backdrop shows through), drawn centered on a 512 canvas ---
 const GLYPHS = {
   road_signs: `
     <path d="M256 120 L392 360 L120 360 Z" fill="none" stroke="{fg}" stroke-width="26" stroke-linejoin="round"/>
@@ -63,7 +63,9 @@ let written = 0, skipped = 0;
 for (const id of dirs) {
   const master = join(ITEMS_DIR, id, 'master.svg');
   const item = JSON.parse(await readFile(join(ITEMS_DIR, id, 'item.json'), 'utf8'));
-  const isPlaceholder = (item.license?.source ?? 'placeholder') === 'placeholder';
+  // Only an EXPLICIT placeholder source is force-regenerable. A missing source is
+  // treated as real art so a forgotten field can never let --force clobber it.
+  const isPlaceholder = item.license?.source === 'placeholder';
   if (await exists(master)) {
     // Regenerate only in --force mode, and only for placeholder items — never
     // clobber real illustrations.
