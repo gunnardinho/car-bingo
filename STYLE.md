@@ -248,20 +248,27 @@ same visual family. Then run every output through the same pipeline (§10).
 
 ```
 A single <SUBJECT>, centered, as a die-cut sticker illustration.
-Bold, playful, minimal — chunky rounded shapes, thick clean interior
-lines, high contrast. Vibrant flat colors from this palette:
-<2–3 HEX FROM §2>. Wrapped in a THICK EVEN WHITE STICKER BORDER that
-hugs the subject's outline. Fully TRANSPARENT background (PNG with
-alpha) — no scene, no ground, no cast shadow. One subject only, simple
-and iconic, readable as a tiny icon. No text, no letters, no watermark.
+Square 1:1 composition, centered with even padding on all sides. Bold,
+playful, minimal — chunky rounded shapes, thick clean interior lines,
+high contrast. Vibrant flat colors from this palette: <2–3 HEX FROM §2>.
+Wrapped in a THICK EVEN WHITE STICKER BORDER that hugs the subject's
+outline. Fully TRANSPARENT background (PNG with alpha) — no scene, no
+ground, no cast shadow. One subject only, simple and iconic, readable as
+a tiny icon. No text, no letters, no watermark.
 ```
+
+> **Aspect ratio is a *parameter*, not prose.** The "square 1:1" line above
+> reinforces the intent, but you must also set the model's size/aspect control to a
+> square — e.g. `1024×1024`, or `--ar 1:1` (Midjourney) — or it won't be honored.
+> Don't put a literal `512×512` in the prompt: generate large (≥ 1024²) and let the
+> pipeline downscale to the 512 export target (§8.1).
 
 **Negative prompt:**
 ```
 photo, photorealistic, 3d render, gradient mesh, busy background, scene,
 multiple objects, solid background, colored background, drop shadow on
 background, text, letters, numbers, watermark, signature, clipped edges,
-thin or uneven border, noise, grain
+thin or uneven border, non-square, portrait, landscape, noise, grain
 ```
 
 ### 9.2 Per-category prompt hints
@@ -284,7 +291,8 @@ background stays transparent:
    the flat look uniform**, which is the whole game.
 2. Keep a **stable seed** per batch; vary only `<SUBJECT>`.
 3. Save the **exact prompt + model + seed** into `item.json` `license` (§11).
-4. Generate at ≥ 1024 px, then let the pipeline downscale to 512.
+4. Generate **square 1:1 at ≥ 1024×1024** (set the size/aspect parameter — see the
+   note under §9.1), then let the pipeline downscale to the 512 export target.
 
 ---
 
