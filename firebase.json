@@ -1,0 +1,28 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "car-bingo-no",
+          "appId": "1:446724231356:android:038b73f4934b18698600b9",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "car-bingo-no",
+          "configurations": {
+            "android": "1:446724231356:android:038b73f4934b18698600b9",
+            "ios": "1:446724231356:ios:d1a8bc37ccc6a1bf8600b9"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "europe-north1",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

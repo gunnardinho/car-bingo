@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "446724231356",
+    "project_id": "car-bingo-no",
+    "storage_bucket": "car-bingo-no.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:446724231356:android:038b73f4934b18698600b9",
+        "android_client_info": {
+          "package_name": "no.sigstad.carbingo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVjKXudstTQxXJC_4xHqdLD4msObN-arg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
