@@ -50,3 +50,9 @@ npm-debug.log*
 
 # Generated catalog masters (placeholders are reproducible via `npm run placeholders`)
 /content/items/**/master.svg
+
+# Local Claude Code / agent tooling — not application
+  code
+.claude/
+.agents/
+skills-lock.json
