@@ -18,6 +18,21 @@ const TILES_DIR = join(OUT_DIR, 'tiles');
 
 const config = JSON.parse(await readFile(CONFIG, 'utf8'));
 
+// Sticker frame (STYLE.md §8): tiles are silhouette die-cut stickers — the art is
+// TRANSPARENT around the subject so the app's themed `cellBackground` shows through.
+// The build only guarantees a uniform TRANSPARENT safe-area margin so the white
+// outline never touches the cell edge; corner rounding + background color are the
+// app's job, never baked into the WebP.
+const MARGIN_RATIO = config.stickerMarginRatio ?? 0.08;
+// Guard against a misconfigured ratio: <0 or >=0.5 makes the inner box zero/negative
+// and Sharp throws a cryptic resize error further down. Fail early and clearly.
+if (typeof MARGIN_RATIO !== 'number' || !(MARGIN_RATIO >= 0 && MARGIN_RATIO < 0.5)) {
+  throw new Error(
+    `catalog.config.json "stickerMarginRatio" must be a number in [0, 0.5); got ${JSON.stringify(MARGIN_RATIO)}`,
+  );
+}
+const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
+
 // fresh output so removed items never leave orphan tiles behind
 await rm(OUT_DIR, { recursive: true, force: true });
 await mkdir(TILES_DIR, { recursive: true });
@@ -36,9 +51,15 @@ for (const id of dirs) {
   const masterName = item.image?.master ?? 'master.svg';
   const masterBuf = await readFile(join(ITEMS_DIR, id, masterName));
 
+  // Contain the whole master into the inner box, then extend a uniform
+  // TRANSPARENT margin out to the full canvas. Alpha is preserved (no flatten) so
+  // the themed cell background shows around the die-cut subject.
+  const margin = Math.round(px * MARGIN_RATIO);
+  const inner = px - margin * 2;
   const webp = await sharp(masterBuf, { density: 384 })
-    .resize(px, px, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .webp({ quality: 90, effort: 5 })
+    .resize(inner, inner, { fit: 'contain', background: TRANSPARENT })
+    .extend({ top: margin, bottom: margin, left: margin, right: margin, background: TRANSPARENT })
+    .webp({ quality: 90, effort: 5, alphaQuality: 100 })
     .toBuffer();
 
   const hash = createHash('sha256').update(webp).digest('hex').slice(0, 16);

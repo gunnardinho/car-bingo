@@ -59,7 +59,14 @@ class ItemDetailPane extends ConsumerWidget {
           Center(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(tokens.cellRadius),
-              child: Image.asset(item.assetPath, width: 160, height: 160, fit: BoxFit.cover),
+              // Same themed backdrop as the board cell, so the transparent
+              // die-cut sticker reads identically here (STYLE.md §7).
+              child: Container(
+                width: 160,
+                height: 160,
+                color: tokens.cellBackground,
+                child: Image.asset(item.assetPath, fit: BoxFit.cover),
+              ),
             ),
           ),
           const SizedBox(height: 16),

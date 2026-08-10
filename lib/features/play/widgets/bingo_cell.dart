@@ -96,6 +96,10 @@ class BingoCell extends ConsumerWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
+                // Themed backdrop the die-cut sticker floats on (STYLE.md §7).
+                // A seasonal theme changes this one token; the transparent
+                // sticker art lets it show through.
+                ColoredBox(color: tokens.cellBackground),
                 ExcludeSemantics(child: image),
                 // caption is decorative; the name is already in the cell's
                 // Semantics label, so exclude it to avoid a double announcement
