@@ -108,16 +108,13 @@ two, but never `firebase_options.dart`.
 
 ## 5. Platform minimums (required by the Firebase SDKs)
 
-**Android — bump `minSdk` to 23** (Firebase Auth/Firestore require API 23+).
-In `android/app/build.gradle.kts`, change:
-
-```kotlin
-        minSdk = flutter.minSdkVersion
-```
-to:
-```kotlin
-        minSdk = 23   // Firebase requires API 23+
-```
+**Android — needs API 23+** (Firebase Auth/Firestore floor). Flutter 3.44's
+default `flutter.minSdkVersion` is already **24**, so the existing
+`minSdk = flutter.minSdkVersion` in `android/app/build.gradle.kts` satisfies this
+— **leave it as is**. Do *not* hardcode `minSdk = 23`: on this Flutter version
+that would *lower* the floor by an API level. Only pin an explicit value if a
+future Flutter bump ever drops the default below 23 (`flutter build apk` warns if
+so).
 
 If `flutterfire configure` did **not** wire the Gradle plugin, add it manually:
 
@@ -249,7 +246,7 @@ Run on a device/emulator, then confirm the doc appears in the console under
 - [ ] Anonymous auth enabled
 - [ ] `flutter pub add firebase_core cloud_firestore firebase_auth`
 - [ ] `flutterfire configure` → `firebase_options.dart` + platform config generated
-- [ ] Android `minSdk = 23`; google-services plugin applied
+- [ ] Android minSdk ≥ 23 (Flutter default 24 already OK); google-services plugin applied
 - [ ] iOS deployment target **15.0**; `pod install`
 - [ ] `firestore.rules` + `marks` index exemption deployed
 - [ ] Still on Spark; no Storage/Functions/Blaze
