@@ -47,6 +47,18 @@ if (typeof OUTLINE_RATIO !== 'number' || !(OUTLINE_RATIO >= 0 && OUTLINE_RATIO <
 }
 const WHITE_CUT = 225; // every channel >= this => a removable-background pixel
 
+// The white-removal and outline steps make hard 0/255 decisions per pixel, so at the
+// native tile size their edges are stair-stepped. Synthesize the die-cut on a canvas
+// SUPERSAMPLE× larger and downscale it with a high-quality kernel: the binary edges
+// become sub-pixel and average into smooth alpha. Outline/margin scale with the work
+// canvas, so the visible thickness is unchanged — only the aliasing goes away.
+const SUPERSAMPLE = config.stickerSupersample ?? 4;
+if (!Number.isInteger(SUPERSAMPLE) || SUPERSAMPLE < 1 || SUPERSAMPLE > 8) {
+  throw new Error(
+    `catalog.config.json "stickerSupersample" must be an integer in [1, 8]; got ${JSON.stringify(SUPERSAMPLE)}`,
+  );
+}
+
 // Flood-fill the solid white background to transparency starting from the canvas
 // edges (a "magic wand" from the border), so white INSIDE the subject is preserved —
 // only white that is edge-connected through other white pixels is removed. In place
@@ -139,11 +151,15 @@ for (const id of dirs) {
       .webp({ quality: 90, effort: 5, alphaQuality: 100 })
       .toBuffer();
   } else {
-    // Raster (AI) master = coloured subject on solid white, no border. Inset it by
-    // the outline width, remove the white background to alpha, then draw the uniform
-    // white die-cut outline ourselves before framing.
-    const outline = Math.max(1, Math.round(px * OUTLINE_RATIO));
-    const subjectBox = inner - 2 * outline;
+    // Raster (AI) master = coloured subject on solid white, no border. Synthesize the
+    // die-cut in the inner box at SUPERSAMPLE× resolution — inset the subject by the
+    // outline width, remove the white background to alpha, draw the uniform white
+    // outline — then downscale to the final inner box (lanczos3) so both edges
+    // anti-alias smoothly, and extend the transparent margin last (same framing as the
+    // vector branch). resize-before-extend is sharp's own pipeline order.
+    const wInner = inner * SUPERSAMPLE;
+    const outline = Math.max(1, Math.round(px * OUTLINE_RATIO) * SUPERSAMPLE);
+    const subjectBox = wInner - 2 * outline;
     const { data, info } = await sharp(masterBuf)
       .resize(subjectBox, subjectBox, { fit: 'contain', background: WHITE })
       .extend({ top: outline, bottom: outline, left: outline, right: outline, background: WHITE })
@@ -153,6 +169,7 @@ for (const id of dirs) {
     removeWhiteBackground(data, info.width, info.height, info.channels);
     addWhiteOutline(data, info.width, info.height, info.channels, outline);
     webp = await sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } })
+      .resize(inner, inner, { kernel: 'lanczos3' })
       .extend(extend)
       .webp({ quality: 90, effort: 5, alphaQuality: 100 })
       .toBuffer();
