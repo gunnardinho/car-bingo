@@ -207,10 +207,10 @@ intentional set instead of a scrapbook.
 
 | Property | Value |
 |---|---|
-| Master format | **SVG** (vector) preferred; **transparent PNG** accepted for AI output |
+| Master format | **PNG — coloured subject on solid white, NO border** for AI output; **SVG** (vector, transparent, carries its own outline) also fine for hand-drawn art |
 | Authoring canvas | **512 × 512**, aspect **1:1** only |
-| Background | **Transparent.** Never bake a solid background — the app draws the themed `cellBackground` behind the sticker. |
-| White outline (die-cut) | Uniform white keyline hugging the subject silhouette, **≈ 16–20 px on the 512 canvas**. Consistent width across all tiles. |
+| Background | **Solid flat white** for raster/AI masters — the build removes it to transparency and draws the outline (§10). Subject only, even padding, nothing touching the edge. Vector SVG masters are authored transparent instead. Either way the final tile is transparent so the themed `cellBackground` shows through. |
+| White outline (die-cut) | **Drawn by the build** for raster masters (uniform width = `stickerOutlineRatio` × px ≈ **18 px @ 512**), so it's byte-identical across every tile. Do NOT draw a border in AI output. SVG masters carry their own. |
 | Safe area | Subject + its outline fully inside the center **≈ 430 × 430** box (the build adds a transparent margin so the outline never touches the cell edge). |
 | Corner radius | Applied by the *cell* to the background, not to the art. Do not bake corners into the sticker. |
 | Export | WebP @ 512 px **with alpha**, quality 90, single density. |
@@ -220,9 +220,14 @@ intentional set instead of a scrapbook.
 
 - **Bold & flat-ish.** Vibrant solid fills; a *single* soft tint or flat shadow for
   depth is allowed, but no photorealism and no heavy gradients.
-- **The white outline does the contrast work.** Because every sticker is wrapped in a
-  consistent white keyline, the subject reads on any themed background (white, dark,
-  red). Keep the outline uniform — that uniformity is what unifies the set.
+- **The white outline does the contrast work.** Every sticker is wrapped in a white
+  keyline (build-drawn for raster art) so the subject reads on any themed background
+  (white, dark, red). Because the build draws it, the width is uniform by construction
+  — that uniformity is what unifies the set.
+- **Keep subject colours clear of white.** The background remover keys out
+  edge-connected near-white, so a subject whose *silhouette* is white (a swan, a white
+  sign face) can lose its edge. Give such subjects an ink outline or a slightly
+  off-white fill; interior white fully enclosed by colour is safe.
 - **Line weight (interior).** If outlining details, one consistent weight ≈
   **stroke 12** on the 512 canvas (~2.3%). Rounded joins/caps — friendly geometry.
 - **≤ 4 colors per sticker**, drawn from the §2 accent palette + ink; plus the white
@@ -233,44 +238,49 @@ intentional set instead of a scrapbook.
 ### 8.3 Road signs — the accurate exception
 
 Real signs have legally fixed colors/shapes. Render them as **flat, accurate
-pictograms in the sign's own palette** (e.g. red-bordered white warning triangle),
-then wrap the whole sign in the standard white die-cut outline so it still reads as
-part of the sticker set. **Do not recolor a sign** — keep it accurate; harmonize via
-the shared outline and flat style.
+pictograms in the sign's own palette** (e.g. red-bordered white warning triangle) on
+the solid white background; the build's outline wraps the whole sign so it still reads
+as part of the sticker set. **Do not recolor a sign** — keep it accurate; harmonize
+via the shared (build-drawn) outline and flat style. *Caution:* a white-faced sign can
+be trimmed by the background remover — give it a dark border/edge so its silhouette
+isn't pure white.
 
 ---
 
 ## 9. AI sticker generation template
 
-Use one **fixed scaffold + a reference image + a stable seed** so outputs land in the
-same visual family. Then run every output through the same pipeline (§10).
+Use one **fixed scaffold + a reference image** so outputs land in the same visual
+family. Then run every output through the same pipeline (§10).
 
 ### 9.1 Prompt scaffold (fill the `<slots>`)
 
 ```
 A single <SUBJECT>, in <ORIENTATION> (e.g. standing side profile),
-centered, as a die-cut sticker illustration. Square 1:1 composition,
-centered with even padding on all sides. Bold, playful, minimal — chunky
+centered, as a flat vector illustration. Square 1:1 composition, centered
+with generous even padding on all sides. Bold, playful, minimal — chunky
 rounded shapes, thick clean interior lines, high contrast. Instantly
 recognizable at tiny sizes; simplify away fine detail. Using ONLY these
-colors: <HEX>, <HEX>, <HEX>, plus white — no other colors. Wrapped in a
-THICK EVEN WHITE STICKER BORDER that closely follows the subject's
-outline. Fully TRANSPARENT background (PNG with alpha) — no scene, no
-ground, no cast shadow. One subject only. No text, no letters, no
-watermark.
+colors: <HEX>, <HEX>, <HEX> — no other colors. Place it on a SOLID FLAT
+WHITE background (#FFFFFF) that completely fills the frame — no scene, no
+ground, no cast shadow, no gradient. Do NOT draw any border, outline, or
+sticker edge around the subject. One subject only. No text, no letters,
+no watermark.
 ```
 
 Why each clause is there (from real icon-set experience):
 - **`<ORIENTATION>` (e.g. standing side profile)** — pins the pose so the set doesn't
   drift between front- and side-facing. Use the *same* orientation for every item in a
   category (§9.2).
-- **"Using ONLY these colors …, plus white — no other colors"** — a hard allow-list
-  prevents the model sneaking in stray hues. List exact hex (≤ 4 + the white outline,
-  per §8.2).
+- **"Using ONLY these colors … — no other colors"** — a hard allow-list prevents the
+  model sneaking in stray hues. List exact hex (≤ 4, per §8.2).
 - **"Instantly recognizable at tiny sizes; simplify away fine detail"** — forces the
   silhouette-first simplification the 48 px squint test (§8.2) checks for.
-- **"THICK EVEN WHITE STICKER BORDER that closely follows the subject's outline"** —
-  keeps the die-cut border uniform tile-to-tile, which is what unifies the set.
+- **"SOLID FLAT WHITE background … Do NOT draw any border/outline"** — AI models can't
+  reliably emit real alpha, so we generate on flat white and the **build** removes it
+  and draws the die-cut outline itself. Letting the model draw the border makes the
+  width vary tile-to-tile; leaving it to the build makes it byte-identical. **Keep the
+  subject's silhouette clear of white** (§8.2) so the background remover doesn't trim
+  its edge — give white-ish subjects a dark edge or off-white fill.
 
 > **Aspect ratio is a *parameter*, not prose.** The "square 1:1" line above
 > reinforces the intent, but you must also set the model's size/aspect control to a
@@ -281,9 +291,10 @@ Why each clause is there (from real icon-set experience):
 **Negative prompt:**
 ```
 photo, photorealistic, 3d render, gradient mesh, busy background, scene,
-multiple objects, solid background, colored background, drop shadow on
-background, text, letters, numbers, watermark, signature, clipped edges,
-thin or uneven border, extra colors, off-palette colors, mixed
+multiple objects, colored background, gradient background, shaded
+background, transparent background, checkerboard, drop shadow, border,
+outline, sticker edge, frame, text, letters, numbers, watermark,
+signature, clipped edges, extra colors, off-palette colors, mixed
 orientation, non-square, portrait, landscape, noise, grain
 ```
 
@@ -292,7 +303,8 @@ orientation, non-square, portrait, landscape, noise, grain
 **Lock one orientation per category and hold every item in that category to it** —
 mixed front/side views within a category are the single most common thing that breaks
 a set's consistency. The colors below are the *only* colors for that category's
-subjects (plus the white outline); feed them into the "Using ONLY these colors" slot.
+subjects (the build adds the white outline separately); feed them into the "Using ONLY
+these colors" slot.
 
 | Category | Orientation (fixed) | Use ONLY these colors |
 |---|---|---|
@@ -304,12 +316,12 @@ subjects (plus the white outline); feed them into the "Using ONLY these colors" 
 
 ### 9.3 Consistency workflow
 
-1. Lock a **reference image** (one approved hero sticker) and pass it to the model
-   for style transfer on every generation — this keeps the **white border width and
-   the flat look uniform**, which is the whole game.
-2. Batch **by category**: keep a stable seed, the fixed `<ORIENTATION>`, and the
-   category's color allow-list constant across the batch — vary only `<SUBJECT>`.
-3. Save the **exact prompt + model + seed** into `item.json` `license` (§11).
+1. Lock a **reference image** (one approved hero subject) and pass it to the model for
+   style transfer on every generation — this keeps the **subject style and flat look
+   uniform** (the border is the build's job, so it's already uniform).
+2. Batch **by category**: keep the fixed `<ORIENTATION>` and the category's color
+   allow-list constant across the batch — vary only `<SUBJECT>`.
+3. Save the **exact prompt + model** into `item.json` `license` (§11).
 4. Generate **square 1:1 at ≥ 1024×1024** (set the size/aspect parameter — see the
    note under §9.1), then let the pipeline downscale to the 512 export target.
 
@@ -320,19 +332,24 @@ subjects (plus the white outline); feed them into the "Using ONLY these colors" 
 Raw AI output is never shipped directly. Normalize it, drop it in
 `content/items/<id>/master.(svg|png)`, then let the build enforce the frame:
 
-1. **Clean the alpha:** remove any background matte / halo so the surround is
-   *truly transparent* (this is what lets the themed background show).
-2. **Verify the white border** is present and even; trim & center the subject.
-3. Set `item.json` `image` (`px`, `master` filename, `format`).
-4. Run the pipeline:
+1. **Confirm a clean white background:** the surround should be even, near-pure white
+   with no gradient/shadow/noise, the subject centered with padding and **no part
+   touching the edge**, and the subject's silhouette not pure white (§8.2). Do **not**
+   draw a border — the build adds it.
+2. Set `item.json` `image` — for a non-default master, set `master` (e.g.
+   `"master.png"`); `format` stays `webp` (it's the built-tile output). Update the
+   `license` block (§11).
+3. Run the pipeline:
    ```bash
    npm run validate && npm run build
    ```
-   `build-catalog.mjs` treats every tile identically: contain into the inner box, add
-   a uniform **transparent** safe-area margin, export **WebP with alpha** (no
-   flatten). Corner rounding and the background color are the app's job, not the
-   file's.
-5. Eyeball it in a real cell against multiple themes: `flutter run -d chrome`.
+   `build-catalog.mjs` frames every tile identically: for raster masters it **removes
+   the white background to alpha (flood-fill from the edges) and draws the uniform
+   white die-cut outline** (SVGs skip this — already transparent), then adds a
+   **transparent** safe-area margin and exports **WebP with alpha** (no flatten).
+   Corner rounding and background colour are the app's job. Outline width is
+   configurable via `stickerOutlineRatio` in `content/catalog.config.json`.
+4. Eyeball it in a real cell against multiple themes: `flutter run -d chrome`.
 
 Placeholders (`make-placeholders.mjs`) already emit v2-correct die-cut stickers — a
 vibrant accent glyph with a white outline on transparency — so the board looks right
@@ -347,8 +364,8 @@ items).
 Every `item.json` records a `license` block. It **records** a decision; it clears
 nothing.
 
-- **AI art:** `source: "ai:<model>"`, keep the **exact `prompt`** and `seed`, prefer a
-  model with clear commercial terms, expect to declare AI use at store review.
+- **AI art:** `source: "ai:<model>"`, keep the **exact `prompt`**, prefer a model with
+  clear commercial terms, expect to declare AI use at store review.
 - **Road signs:** verify reuse terms first; if Statens vegvesen, set
   `source: "statens_vegvesen"`, the real `type`/`url`, and `attributionRequired`.
 - **Placeholders (current):** `source: "placeholder"`, `type: "CC0-1.0"`.
@@ -357,12 +374,14 @@ nothing.
 
 ## 12. Production checklist (per tile)
 
-- [ ] 512-authored, **transparent background**, one centered subject
-- [ ] Uniform **white die-cut outline** hugging the silhouette (≈ 16–20 px @ 512)
+- [ ] 512-authored, one centered subject on a **flat white background** (raster) or
+      **true transparency** (vector SVG); generous padding, nothing touching the edge
+- [ ] **No border drawn in the art** — the build adds the uniform white outline
+- [ ] Subject silhouette **not pure white** (else the background remover trims it)
 - [ ] Vibrant, ≤ 4 colors, high contrast; reads on white **and** dark **and** red
 - [ ] Passes the **48 px squint test**
-- [ ] **No baked-in text**; no baked background; no baked corners/shadow
-- [ ] `item.json` `license` filled with real provenance (prompt/seed for AI)
+- [ ] **No baked-in text**; no baked corners/shadow; no gradient/shaded background
+- [ ] `item.json` `license` filled with real provenance (prompt for AI)
 - [ ] `difficulty` reflects real-world spot-rarity (Easy 1–2 / Medium 3 / Hard 4–5)
 - [ ] `npm run validate && npm run build` pass; eyeballed in a cell across themes
 
@@ -377,7 +396,8 @@ nothing.
 | Playful accent palette, radius scale, spacing scale | `lib/core/theme/bingo_tokens.dart` → `BingoPalette` / `AppRadii` / `AppSpacing` |
 | Themed variants (e.g. Christmas) | additional `BingoTokens` presets (see §7) |
 | Category colors (data, unused in chrome) | `content/catalog.config.json` |
-| Transparent tile export + safe-area margin | `scripts/build-catalog.mjs` |
+| Sticker margin ratio, outline width (`stickerOutlineRatio`) | `content/catalog.config.json` |
+| White-bg removal + build-drawn outline + transparent export | `scripts/build-catalog.mjs` |
 | Die-cut placeholder stickers | `scripts/make-placeholders.mjs` |
 
 ---
@@ -396,3 +416,7 @@ nothing.
   (rounded font recommendation), radius/spacing scales, motion, component specs.
 - The build now exports **transparent WebP** (alpha preserved); background color and
   corner rounding are applied by the app, not baked per tile.
+- Raster/AI masters are authored as a **coloured subject on flat white, with no
+  border**: the build removes the white background (edge flood-fill) and **draws the
+  white die-cut outline itself**, so the outline is byte-identical on every tile and
+  the workflow doesn't depend on the true alpha AI models can't emit.

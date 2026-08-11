@@ -20,13 +20,16 @@
   "image": {
     "aspect": "1:1",
     "format": "webp",
-    "px": 512
+    "px": 512,
+    "master": "master.png"
   },
   "license": {
-    "source": "placeholder",
-    "type": "CC0-1.0",
-    "author": "generated",
+    "source": "ai:openai-chatgpt-5.5",
+    "type": "proprietary",
+    "author": null,
     "attributionRequired": false,
-    "acquiredAt": "2026-08-06"
+    "acquiredAt": "2026-08-10",
+    "url": null,
+    "prompt": "A single horse, in standing side profile, centered, as a die-cut sticker illustration. Square 1:1 composition, centered with even padding on all sides. Bold, playful, minimal — chunky rounded shapes, thick clean interior lines, high contrast. Instantly recognizable at tiny sizes; simplify away fine detail. Using ONLY these colors: #C58B45, #7A5132, #16212B, plus #FFFFFF — no other colors. Wrapped in a THICK EVEN WHITE STICKER BORDER that closely follows the subject's outline. Fully TRANSPARENT background (PNG with alpha) — no scene, no ground, no cast shadow. One subject only. No text, no letters, no watermark."
   }
 }

@@ -32,6 +32,89 @@ if (typeof MARGIN_RATIO !== 'number' || !(MARGIN_RATIO >= 0 && MARGIN_RATIO < 0.
   );
 }
 const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
+const WHITE = { r: 255, g: 255, b: 255, alpha: 1 };
+
+// Die-cut synthesis (STYLE.md §8/§10): AI masters are authored as a coloured subject
+// on a SOLID WHITE background, with NO border. The build removes that background and
+// draws the white outline itself, so every tile's border is byte-for-byte identical
+// regardless of the source art. Vector (SVG) masters are already transparent + already
+// carry their outline, so they skip this.
+const OUTLINE_RATIO = config.stickerOutlineRatio ?? 0.035; // outline width, fraction of px
+if (typeof OUTLINE_RATIO !== 'number' || !(OUTLINE_RATIO >= 0 && OUTLINE_RATIO < 0.2)) {
+  throw new Error(
+    `catalog.config.json "stickerOutlineRatio" must be a number in [0, 0.2); got ${JSON.stringify(OUTLINE_RATIO)}`,
+  );
+}
+const WHITE_CUT = 225; // every channel >= this => a removable-background pixel
+
+// The white-removal and outline steps make hard 0/255 decisions per pixel, so at the
+// native tile size their edges are stair-stepped. Synthesize the die-cut on a canvas
+// SUPERSAMPLE× larger and downscale it with a high-quality kernel: the binary edges
+// become sub-pixel and average into smooth alpha. Outline/margin scale with the work
+// canvas, so the visible thickness is unchanged — only the aliasing goes away.
+const SUPERSAMPLE = config.stickerSupersample ?? 4;
+if (!Number.isInteger(SUPERSAMPLE) || SUPERSAMPLE < 1 || SUPERSAMPLE > 8) {
+  throw new Error(
+    `catalog.config.json "stickerSupersample" must be an integer in [1, 8]; got ${JSON.stringify(SUPERSAMPLE)}`,
+  );
+}
+
+// Flood-fill the solid white background to transparency starting from the canvas
+// edges (a "magic wand" from the border), so white INSIDE the subject is preserved —
+// only white that is edge-connected through other white pixels is removed. In place
+// on a raw RGBA buffer.
+function removeWhiteBackground(data, W, H, ch) {
+  const white = (p) => data[p * ch] >= WHITE_CUT && data[p * ch + 1] >= WHITE_CUT && data[p * ch + 2] >= WHITE_CUT;
+  const seen = new Uint8Array(W * H);
+  const stack = [];
+  const visit = (x, y) => {
+    if (x < 0 || x >= W || y < 0 || y >= H) return;
+    const p = y * W + x;
+    if (!seen[p] && white(p)) { seen[p] = 1; stack.push(p); }
+  };
+  for (let x = 0; x < W; x++) { visit(x, 0); visit(x, H - 1); }
+  for (let y = 0; y < H; y++) { visit(0, y); visit(W - 1, y); }
+  while (stack.length) {
+    const p = stack.pop();
+    data[p * ch + 3] = 0;
+    const x = p % W, y = (p / W) | 0;
+    visit(x + 1, y); visit(x - 1, y); visit(x, y + 1); visit(x, y - 1);
+  }
+}
+
+// Draw a uniform white die-cut outline of `width` px around the opaque subject: a
+// two-pass chamfer distance transform from the subject, then paint white where a
+// transparent pixel lies within `width` of it (1 px feathered rim). In place on RGBA.
+function addWhiteOutline(data, W, H, ch, width) {
+  const N = W * H, INF = 1e9, D1 = 1, D2 = Math.SQRT2;
+  const dist = new Float32Array(N);
+  for (let p = 0; p < N; p++) dist[p] = data[p * ch + 3] >= 128 ? 0 : INF;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const p = y * W + x; let d = dist[p];
+    if (x > 0) d = Math.min(d, dist[p - 1] + D1);
+    if (y > 0) d = Math.min(d, dist[p - W] + D1);
+    if (x > 0 && y > 0) d = Math.min(d, dist[p - W - 1] + D2);
+    if (x < W - 1 && y > 0) d = Math.min(d, dist[p - W + 1] + D2);
+    dist[p] = d;
+  }
+  for (let y = H - 1; y >= 0; y--) for (let x = W - 1; x >= 0; x--) {
+    const p = y * W + x; let d = dist[p];
+    if (x < W - 1) d = Math.min(d, dist[p + 1] + D1);
+    if (y < H - 1) d = Math.min(d, dist[p + W] + D1);
+    if (x < W - 1 && y < H - 1) d = Math.min(d, dist[p + W + 1] + D2);
+    if (x > 0 && y < H - 1) d = Math.min(d, dist[p + W - 1] + D2);
+    dist[p] = d;
+  }
+  for (let p = 0; p < N; p++) {
+    if (data[p * ch + 3] >= 128) continue; // subject stays
+    const d = dist[p];
+    if (d > 0 && d <= width) {
+      const o = p * ch;
+      data[o] = 255; data[o + 1] = 255; data[o + 2] = 255;
+      data[o + 3] = d > width - 1 ? Math.round(255 * (width - d)) : 255; // feathered rim
+    }
+  }
+}
 
 // fresh output so removed items never leave orphan tiles behind
 await rm(OUT_DIR, { recursive: true, force: true });
@@ -51,16 +134,46 @@ for (const id of dirs) {
   const masterName = item.image?.master ?? 'master.svg';
   const masterBuf = await readFile(join(ITEMS_DIR, id, masterName));
 
-  // Contain the whole master into the inner box, then extend a uniform
-  // TRANSPARENT margin out to the full canvas. Alpha is preserved (no flatten) so
-  // the themed cell background shows around the die-cut subject.
+  // Contain the whole master into the inner box, then extend a uniform TRANSPARENT
+  // margin out to the full canvas. Alpha is preserved (no flatten) so the themed
+  // cell background shows around the die-cut subject.
   const margin = Math.round(px * MARGIN_RATIO);
   const inner = px - margin * 2;
-  const webp = await sharp(masterBuf, { density: 384 })
-    .resize(inner, inner, { fit: 'contain', background: TRANSPARENT })
-    .extend({ top: margin, bottom: margin, left: margin, right: margin, background: TRANSPARENT })
-    .webp({ quality: 90, effort: 5, alphaQuality: 100 })
-    .toBuffer();
+  const extend = { top: margin, bottom: margin, left: margin, right: margin, background: TRANSPARENT };
+  const isVector = masterName.toLowerCase().endsWith('.svg');
+
+  let webp;
+  if (isVector) {
+    // Already transparent — frame directly (byte-identical to the pre-chroma build).
+    webp = await sharp(masterBuf, { density: 384 })
+      .resize(inner, inner, { fit: 'contain', background: TRANSPARENT })
+      .extend(extend)
+      .webp({ quality: 90, effort: 5, alphaQuality: 100 })
+      .toBuffer();
+  } else {
+    // Raster (AI) master = coloured subject on solid white, no border. Synthesize the
+    // die-cut in the inner box at SUPERSAMPLE× resolution — inset the subject by the
+    // outline width, remove the white background to alpha, draw the uniform white
+    // outline — then downscale to the final inner box (lanczos3) so both edges
+    // anti-alias smoothly, and extend the transparent margin last (same framing as the
+    // vector branch). resize-before-extend is sharp's own pipeline order.
+    const wInner = inner * SUPERSAMPLE;
+    const outline = Math.max(1, Math.round(px * OUTLINE_RATIO) * SUPERSAMPLE);
+    const subjectBox = wInner - 2 * outline;
+    const { data, info } = await sharp(masterBuf)
+      .resize(subjectBox, subjectBox, { fit: 'contain', background: WHITE })
+      .extend({ top: outline, bottom: outline, left: outline, right: outline, background: WHITE })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    removeWhiteBackground(data, info.width, info.height, info.channels);
+    addWhiteOutline(data, info.width, info.height, info.channels, outline);
+    webp = await sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } })
+      .resize(inner, inner, { kernel: 'lanczos3' })
+      .extend(extend)
+      .webp({ quality: 90, effort: 5, alphaQuality: 100 })
+      .toBuffer();
+  }
 
   const hash = createHash('sha256').update(webp).digest('hex').slice(0, 16);
   const file = `tiles/${hash}.webp`;
